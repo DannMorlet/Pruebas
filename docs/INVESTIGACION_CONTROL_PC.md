@@ -118,3 +118,32 @@ La API Python de Blender (`bpy`) permite operaciones deterministas y compuestas 
 - [MCP for Blender actualizado](https://github.com/ahujasid/mcp-for-blender), [Windows-MCP](https://github.com/CursorTouch/Windows-MCP) y [Blender hardware](https://www.blender.org/download/requirements/).
 
 **Verificación requerida en PC:** medir 10 min CPU/RAM idle, picos VRAM y FPS de juego con modelo OFF y ON, ejecución segura de escena .blend de prueba, cancelación, restauración del usuario sobre el mouse y rollback del `mcp.json`.
+
+
+## Actualización 2026-10-29 — Priorizar los modelos YA instalados
+
+Se corrigió la estrategia anterior: **no descargar Qwen3.5-4B o 9B como requisito**, pues el usuario ya probó satisfactoriamente modelos propios en RTX 5060 8 GB. Los rótulos se tomaron de una captura de LM Studio; algunos nombres están truncados y Codex debe obtener IDs completos por API.
+
+| Modelo existente | Rol inicial propuesto | Notas |
+| --- | --- | --- |
+| Matick Gemma 4 v2 E2B Q4_K_M | Asistente principal; evaluar herramientas/visión según capacidades reales | Está personalizado; no asumir que su GGUF se ejecuta directamente en Intel NPU |
+| OLMoE 1B-7B-0125 Instruct Q4_K_S | Alternativa MoE para consultas simples; prueba de precisión y latencia | ~7B parámetros totales aunque ~1B activos por token; pesos totales ocupan VRAM |
+| Qwen3.8 4B Agentic… Q4_K_S (etiqueta truncada) | Candidato a tareas agentic y código, condicionado a pruebas MCP | Resolver identificador exacto; no extrapolar soporte OpenVINO de otros Qwen |
+| Granite 3.1 3B A800M Instruct Q4_K_S | Comandos breves y acciones estructuradas | ~3B totales, ~800M activos; probar formato de herramientas antes de automatización real |
+
+### Decisión sobre NPU
+- Intel Core Ultra 5 225F: Intel AI Boost NPU **13 TOPS INT8** según ficha Intel. La plataforma Arrow Lake NPU 3720 (PCI 0xAD1D) figura soportada en OpenVINO para Windows 11.
+- **NPU experimental, jamás obligatoria:** la RTX 5060 sigue como inferencia principal, especialmente si el usuario ya tiene benchmarks positivos. La NPU 13 TOPS no debe asumirse más rápida ni con menor RAM efectiva para un LLM completo.
+- **Primer candidato NPU: Gemma 4 E2B de referencia**, no necesariamente el GGUF personalizado: OpenVINO 2026.2 marca gemma-4-e2b-it FP4-NORMALIZED e INT8-CW como verificados en NPU, y las notas 2026.4 reportan mejoras de latencia inicial. Requiere un modelo en formato/precisión compatible, no abrir simplemente el Q4_K_M de LM Studio.
+- **Mejor uso práctico para NPU si los LLM no rinden:** clasificación pequeña, embeddings/búsqueda y voz local *solo si existen modelos y pipelines verificados*; no activar cargas permanentes por defecto.
+- Los cuatro modelos GGUF existentes permanecen en **LM Studio + RTX** mientras no haya pruebas controladas en el equipo. **El motor NPU debe ser un proceso separado, activado bajo demanda y con switch OFF**.
+- OpenVINO incluye soporte de SDK Python para versiones específicas; usar entorno virtual compatible, no sustituir C:\Python315\python.exe. Verificar driver NPU/versión, `from openvino import Core; print(Core().available_devices)` antes de conversiones o descargas.
+- OLMoE y Granite indicados no se declaran NPU-compatibles sin test o soporte publicado. No asumir que la compatibilidad de una familia se extiende a una variante personalizada/finetune.
+
+### Prueba A/B propuesta para Codex local
+1. Medir en LM Studio con cada uno de los cuatro modelos: tokens/seg, TTFT, tool-call correcto, VRAM, RAM, CPU, FPS de juego cuando corresponda. Mismo prompt de 10 acciones y contexto equivalente.
+2. Verificar en Windows Device Manager el driver NPU y en OpenVINO que exista `NPU` en `Core().available_devices`. No instalar drivers a ciegas.
+3. Solo si está disponible, ejecutar inferencia de prueba con un **modelo OpenVINO compatible** en NPU y comparar **sin cambiar** el GGUF existente. Medir memoria total y CPU también.
+4. Adoptar NPU únicamente si reduce carga de GPU en una tarea útil sin ralentizar Matick ni perjudicar FPS; en otro caso dejarla apagada.
+
+Fuentes: https://www.intel.com/content/www/us/en/products/sku/241069/intel-core-ultra-5-processor-225f-20m-cache-up-to-4-90-ghz/specifications.html ; https://github.com/openvinotoolkit/openvino/blob/master/src/plugins/intel_npu/README.md ; https://docs.openvino.ai/2026/documentation/compatibility-and-support/supported-models.html ; https://docs.openvino.ai/2026/about-openvino/release-notes-openvino.html ; https://huggingface.co/allenai/OLMoE-1B-7B-0125-Instruct-GGUF ; https://huggingface.co/tensorblock/granite-3.1-3b-a800m-instruct-GGUF .
