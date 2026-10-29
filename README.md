@@ -17,14 +17,14 @@
 
 | Archivo | Propósito |
 | --- | --- |
-| [Prototipo visual](prototype/index.html) | Pantalla interactiva estática, sin dependencias, llamadas API ni instalación |
+| Prototipo visual (pendiente) | Se diseñará y verificará antes de la implementación con Codex |
 | [Especificación UX](docs/UX.md) | Paneles, modos, switch y administración de conversaciones |
 | [Arquitectura](docs/ARQUITECTURA.md) | Integración segura con LM Studio / Windows / MCP, ciclo de vida, memoria |
 | [Trabajo para Codex](docs/CODEX_HANDOFF.md) | Pasos y criterios de aceptación antes de implementar |
 
-## Cómo visualizar
+## Estado de los entregables
 
-Abre `prototype/index.html` en cualquier navegador moderno. El prototipo **solo muestra y permite probar el diseño**; no envía mensajes a LM Studio, no ejecuta programas ni graba tus chats reales.
+La documentación de diseño está disponible. **El prototipo navegable todavía no está publicado**; no hay aplicación instalada ni conexión con LM Studio en este repositorio.
 
 ## Experiencia deseada
 
