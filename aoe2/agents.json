@@ -74,7 +74,11 @@
       "source": "Agua_de_Morlet.per",
       "engine": "lm_studio_gpu",
       "description": "LLM de Matick cargado por el usuario en RTX 5060",
-      "ready": false
+      "ready": false,
+      "external_sidecar": "Matick.py",
+      "per_support_folder": "Morlet7_Matick_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
     },
     {
       "number": 2,
@@ -89,7 +93,11 @@
       "local_model_directory": "C:\\NPU",
       "download_status": "El usuario confirmó descarga; formato y archivos exactos pendientes de comprobar",
       "npu_execution_status": "Pendiente verificar OpenVINO + Intel NPU; descargado no significa compatible ni funcionando",
-      "local_model_autoload": false
+      "local_model_autoload": false,
+      "external_sidecar": "Nemesis.py",
+      "per_support_folder": "Morlet7_Nemesis_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
     },
     {
       "number": 3,
@@ -100,7 +108,11 @@
       "engine": "gpu_small_agent",
       "role_key": "tyran",
       "description": "Prioridad propuesta: maniobra militar",
-      "ready": false
+      "ready": false,
+      "external_sidecar": "Tyran.py",
+      "per_support_folder": "Morlet7_Tyran_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
     },
     {
       "number": 4,
@@ -111,7 +123,11 @@
       "engine": "gpu_small_agent",
       "role_key": "mazapan",
       "description": "Prioridad propuesta: economía creativa y supervivencia",
-      "ready": false
+      "ready": false,
+      "external_sidecar": "Mazapan.py",
+      "per_support_folder": "Morlet7_Mazapan_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
     },
     {
       "number": 5,
@@ -144,7 +160,11 @@
         "Empalagador Supremo"
       ],
       "design_received": true,
-      "implementation_stage": "specified_only"
+      "implementation_stage": "specified_only",
+      "external_sidecar": "Nutella.py",
+      "per_support_folder": "Morlet7_Nutella_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
     },
     {
       "number": 6,
@@ -196,7 +216,11 @@
         "Coordinador de ataque por edades"
       ],
       "implementation_stage": "specified_only",
-      "source_caveat": "PDF uses conceptual, unverified .per fragment (#load-if-defined EDAD-*, goal in action side); requires adapting/validating, not direct copying"
+      "source_caveat": "PDF uses conceptual, unverified .per fragment (#load-if-defined EDAD-*, goal in action side); requires adapting/validating, not direct copying",
+      "external_sidecar": "Gemini.py",
+      "per_support_folder": "Morlet7_Gemini_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
     },
     {
       "number": 7,
@@ -232,7 +256,11 @@
         "Cazador de oportunidades"
       ],
       "implementation_stage": "specified_only",
-      "source_caveat": "Most PDF advanced pages repeat same description and final INI/YAML is not executable .per/.ai"
+      "source_caveat": "Most PDF advanced pages repeat same description and final INI/YAML is not executable .per/.ai",
+      "external_sidecar": "Copilot.py",
+      "per_support_folder": "Morlet7_Copilot_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
     }
   ],
   "pending_tasks": [
@@ -241,5 +269,25 @@
     "Probar NPU experimental Nemesis",
     "Probar SmolLM2-360M compartido Tyran/Mazapan y medir VRAM/FPS",
     "Traducir propuestas Nutella Gemini Copilot a reglas jugables, sin trucos, sin parálisis económica"
-  ]
+  ],
+  "routing_v04": {
+    "status": "PREPARATION_ONLY_NOT_INSTALL_READY",
+    "router_model_preferred": "granite-3.1-3b-a800m-instruct",
+    "lm_studio_endpoint": "http://127.0.0.1:1234/v1",
+    "sidecar_execution": "Windows Python external process; .per and .ai CANNOT call .py",
+    "external_bridge": "AoE2Control Agent Bridge v3 (not included, not tested)",
+    "bridge_singleplayer_only": true,
+    "preview_default": true,
+    "requires_explicit_execute": true,
+    "player_ids_are_lobby_slots_not_ai_numbers": true,
+    "original_promisory_untouched": true,
+    "missing_support_files": [
+      "Promisory/defaultConstants.per",
+      "Promisory/finalingConstants.per",
+      "Promisory/finaling.per"
+    ],
+    "installation_blocker": "Before installing .per v0.4, copy the compatible original support into seven isolated folders with preparar_nucleos.py",
+    "code_package": "Morlet_AoE2DE_7IA_Router_v0_4_preparacion.zip (delivered in ChatGPT, not committed)",
+    "specialized_runtime_status": "Matick, Nemesis NPU and SmolLM2 GPU integrations pending"
+  }
 }
