@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gaming · Matick · Morlet — prototipo</title>
+<style>
+:root{color-scheme:dark;--bg:#101216;--panel:#181b21;--panel2:#21252d;--edge:#303640;--muted:#9299a7;--ink:#edf0f7;--blue:#4c74ff;--aqua:#55d8ad}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0e1014;color:var(--ink);font:14px/1.45 Inter,Segoe UI,Arial,sans-serif}button,input,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #6e9bff;outline-offset:2px}
+body{padding:18px 22px 34px;background:radial-gradient(ellipse at 50% -20%,#1a2540 0,#101217 46%,#0d0f12 100%)}
+.demo-top{max-width:1480px;margin:0 auto 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.demo-top strong{font-size:17px}.demo-top small{display:block;color:var(--muted);margin-top:3px}.demo-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+button{border:1px solid var(--edge);background:#242932;color:#dfe5f4;border-radius:9px;padding:7px 11px;transition:background .12s,border-color .12s}button:hover{background:#333a46}.demo-actions button.active,.primary{background:#385dd6;border-color:#507eff;color:white}.hint{color:#b7bbc4;font-size:12px}
+.stage{max-width:100%;min-height:500px;display:flex;justify-content:center;align-items:flex-start}
+.shell{--left-size:226px;--right-size:276px;width:min(1450px,100%);height:790px;min-width:310px;min-height:470px;max-width:100%;border:1px solid #353e4e;border-radius:13px;box-shadow:0 16px 70px #0009;overflow:hidden;resize:both;position:relative;background:#17191e;display:flex;flex-direction:column}
+.window-title{height:29px;flex:none;background:#3456dd;display:flex;align-items:center;justify-content:center;position:relative;font-size:11px;font-weight:700;color:#e8edff;letter-spacing:.2px}.window-dots{position:absolute;right:13px;top:0;height:100%;display:flex;gap:14px;align-items:center;opacity:.9}.window-dots span{font-size:13px}
+.status-strip{height:35px;flex:none;display:flex;align-items:center;gap:9px;padding:0 12px;background:#1a1e24;border-bottom:1px solid #2b3039;font-size:12px;white-space:nowrap;overflow:hidden}
+.status-strip .server{color:#bbc4d4;overflow:hidden;text-overflow:ellipsis}.status-strip .dot{background:#8b96a7;width:7px;height:7px;border-radius:50%;flex:none}.status-strip .stub{margin-left:auto;color:#90a0bf;overflow:hidden;text-overflow:ellipsis}
+.main-layout{position:relative;min-height:0;flex:1;display:grid;grid-template-columns:var(--left-size) minmax(0,1fr) var(--right-size);overflow:hidden}
+.sidebar,.right-panel{min-width:0;background:#1b1e24;overflow:auto;scrollbar-width:thin;scrollbar-color:#3a414d transparent}
+.sidebar{border-right:1px solid #303641;padding:12px 10px 17px;display:flex;flex-direction:column;gap:6px}
+.brand{display:flex;align-items:center;gap:9px;padding:3px 3px 9px;white-space:nowrap}.brand-icon{display:grid;place-items:center;background:#604be4;border-radius:10px;width:32px;height:32px;font-size:20px;color:#fff;box-shadow:0 0 22px #543b8a45}.brand-txt{font-size:15px;font-weight:800}.brand-txt small{font-size:10px;color:#8993a6;font-weight:500;display:block}
+.side-button{width:100%;text-align:left;border:0;background:transparent;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px;white-space:nowrap;color:#c9d0dc}.side-button.active{background:#293957;color:#e4eaff}.side-button:hover{background:#2a303a}.symbol{width:19px;text-align:center;font-size:16px;flex:none}
+.side-section{color:#778397;font-size:11px;letter-spacing:.08em;font-weight:700;text-transform:uppercase;margin:14px 8px 5px}
+.chat-item{display:flex;align-items:center;border-radius:8px;min-width:0}.chat-item.active{background:#293249}.chat-item>button{border:0;background:transparent;flex:1;min-width:0;text-align:left;color:#d0d6e2;padding:8px 7px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.chat-item input{margin:0 5px 0 8px;accent-color:#6384ff}.chat-item>button:hover{background:#2d3440}.chat-item .xsmall{color:#8d96a7}
+.sidebar-footer{margin-top:auto;padding:10px 3px 0;border-top:1px solid #303640;display:flex;align-items:center;gap:9px;color:#a4aec1;font-size:12px;white-space:nowrap}
+.sidebar .bulk-tools{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.sidebar .bulk-tools button{font-size:11px;padding:5px 7px}
+.center{min-width:0;min-height:0;display:flex;flex-direction:column;background:linear-gradient(170deg,#15171b,#171a20)}
+.topnav{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;min-height:55px;border-bottom:1px solid #242931;gap:9px}
+.topnav .left-tools,.topnav .right-tools{display:flex;align-items:center;gap:7px;min-width:0}.icon-button{width:32px;height:32px;display:grid;place-items:center;padding:0;font-size:17px;flex:none}.top-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.segmented{display:flex;gap:2px;background:#272a30;padding:3px;border:1px solid #353942;border-radius:28px;align-items:center}.segmented button{padding:6px 20px;min-width:68px;background:transparent;border:0;border-radius:22px;color:#bbc1ce;font-size:12px}.segmented button.selected{background:#40444b;color:white;box-shadow:0 1px 4px #0007}
+.power-row{display:flex;align-items:center;gap:9px;border-bottom:1px solid #252a34;padding:9px 15px;min-height:45px;flex-wrap:wrap}
+.pill{background:#232833;border:1px solid #373e4b;border-radius:20px;padding:5px 9px;white-space:nowrap;font-size:11px;color:#bac4d7}
+.power-row .spacer{flex:1}
+.switch{display:flex;align-items:center;gap:7px;background:#292e38;padding:4px 8px 4px 5px;border:1px solid #485264;border-radius:25px;font-size:11px;min-height:30px}
+.switch span.ball{width:22px;height:22px;background:#747d90;border-radius:50%;display:grid;place-items:center;font-size:11px}.switch.is-on{border-color:#288970;background:#19362f}.switch.is-on span.ball{background:#33b996}
+main.chat-content{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;padding:10px 18px 18px;scrollbar-width:thin}
+.hero{margin:auto auto 0;width:100%;max-width:780px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;padding:8px 0 22px}
+.hero .bot-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#354cc8,#663fd9);display:grid;place-items:center;font-size:26px;box-shadow:0 8px 32px #5144e630;margin-bottom:14px}
+.hero h1{font-size:clamp(20px,3vw,31px);margin:0 0 8px;letter-spacing:-.03em;font-weight:650}.hero p{color:#9fa7b7;margin:0;font-size:13px}
+.messages{width:100%;max-width:790px;margin:auto auto 14px;display:flex;flex-direction:column;gap:13px;padding-top:22px}
+.message{max-width:84%;border:1px solid #373e49;background:#272b34;padding:12px 15px;border-radius:15px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}.message.user{align-self:flex-end;background:#33405f;border-color:#42577f}.message.assistant{align-self:flex-start}.message-label{display:block;margin-bottom:4px;color:#a7b2c4;font-size:10px;font-weight:bold;letter-spacing:.04em}
+.composer-wrap{width:100%;max-width:790px;margin:0 auto}
+.composer{border-radius:19px;border:1px solid #444a55;background:#2a2e35;min-height:120px;padding:14px;box-shadow:0 14px 38px #0002}
+.composer textarea{border:0;background:transparent;resize:none;outline:0;color:#eef2fc;width:100%;height:57px;min-height:40px;display:block;line-height:1.5}.composer textarea::placeholder{color:#8b929e}
+.composer-bottom{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.composer-bottom .actions{display:flex;gap:5px;align-items:center}.smalltext{font-size:11px;color:#9da7b6}.circle-send{border-radius:50%;width:34px;height:34px;padding:0;display:grid;place-items:center;font-size:19px;background:#486af0;border:0;color:white}
+.quicklinks{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px auto 0;max-width:800px}.quicklinks button{font-size:11px;background:#22262d;border-color:#353b46}
+.right-panel{border-left:1px solid #323944;padding:13px 12px 16px;display:flex;flex-direction:column;gap:11px}
+.right-panel .head{display:flex;justify-content:space-between;align-items:center;gap:8px;touch-action:none}.right-panel .head strong{font-size:13px}
+.right-panel .panel-btns{display:flex;gap:4px}.right-panel .panel-btns button{padding:3px 7px;font-size:12px}
+.info-card{background:#22262d;border:1px solid #333a44;border-radius:12px;padding:13px;display:flex;flex-direction:column;gap:10px}
+.info-card h3{margin:0 0 3px;font-size:12px;color:#e0e5ef}.info-card .line{display:flex;justify-content:space-between;gap:8px;align-items:center;color:#8d99ae;font-size:11px;min-width:0}.info-card .line b{font-weight:600;color:#d6deef;max-width:61%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.detail{text-align:center;color:#a5b0c1;font-size:11px;margin-top:5px}.bubble-dot{display:inline-block;width:8px;height:8px;background:#f0ad59;border-radius:50%;margin-right:5px}
+.gutter{position:absolute;width:7px;top:0;bottom:0;z-index:7;cursor:col-resize;transition:background .1s;touch-action:none}.gutter:hover,.gutter.dragging{background:#5369ae66}
+.shell.is-wide .gutter.left{left:calc(var(--left-size) - 3px)}.shell.is-wide .gutter.right{right:calc(var(--right-size) - 3px)}
+.shell.is-wide.left-closed .gutter.left,.shell.is-wide.right-closed .gutter.right,.shell.right-floating .gutter.right{display:none}
+.shell.is-compact .main-layout{grid-template-columns:52px minmax(0,1fr)}
+.shell.is-compact .sidebar{padding:10px 5px}.shell.is-compact .sidebar .brand{padding:4px 2px 9px}.shell.is-compact .sidebar .brand-icon{width:38px;height:38px}.shell.is-compact .sidebar .label,.shell.is-compact .sidebar .side-section,.shell.is-compact .sidebar .chat-groups,.shell.is-compact .sidebar .sidebar-footer,.shell.is-compact .sidebar .brand-txt{display:none}
+.shell.is-compact .sidebar .side-button{padding:10px 8px;justify-content:center}
+.shell.is-compact .sidebar.popout{position:absolute;width:min(234px,80%);height:100%;z-index:16;top:0;left:0;box-shadow:15px 0 45px #0009;padding:12px 10px}
+.shell.is-compact .sidebar.popout .label,.shell.is-compact .sidebar.popout .side-section,.shell.is-compact .sidebar.popout .chat-groups,.shell.is-compact .sidebar.popout .sidebar-footer,.shell.is-compact .sidebar.popout .brand-txt{display:block}
+.shell.is-compact .sidebar.popout .side-button{justify-content:flex-start}
+.shell.is-compact .sidebar.popout .sidebar-footer{display:flex}
+.shell.is-compact .right-panel{position:absolute;top:0;bottom:0;right:0;width:min(296px,calc(100% - 55px));z-index:15;box-shadow:-14px 0 35px #0009}
+.shell.is-compact.right-closed .right-panel,.shell.is-wide.right-closed .right-panel{display:none}
+.shell.is-compact .gutter{display:none}
+.shell.is-wide.left-closed .sidebar .label,.shell.is-wide.left-closed .sidebar .chat-groups,.shell.is-wide.left-closed .sidebar .side-section,.shell.is-wide.left-closed .sidebar .brand-txt,.shell.is-wide.left-closed .sidebar .sidebar-footer{display:none}
+.shell.is-wide.left-closed .sidebar{padding:10px 5px}.shell.is-wide.left-closed .sidebar .side-button{justify-content:center}.shell.is-wide.left-closed .sidebar .brand{justify-content:center}
+.shell.is-wide.right-floating .main-layout{grid-template-columns:var(--left-size) minmax(0,1fr) 0px}
+.shell.right-floating .right-panel{display:flex;position:absolute;z-index:24;right:var(--float-right,12px);top:var(--float-top,65px);width:min(298px,calc(100% - 80px));height:min(560px,calc(100% - 80px));border:1px solid #57627a;border-radius:13px;box-shadow:0 15px 50px #000b;background:#22262d}
+.shell.right-floating .right-panel .head{cursor:grab}
+.shell.is-wide.left-closed .main-layout{grid-template-columns:56px minmax(0,1fr) var(--right-size)}
+.shell.is-wide.right-closed .main-layout{grid-template-columns:var(--left-size) minmax(0,1fr) 0px}
+.shell.is-wide.left-closed.right-closed .main-layout{grid-template-columns:56px minmax(0,1fr) 0px}
+.shell.is-wide.left-closed.right-floating .main-layout{grid-template-columns:56px minmax(0,1fr) 0px}
+.shell.is-compact .topnav{padding:7px;gap:4px}.shell.is-compact .top-title{display:none}.shell.is-compact .segmented button{min-width:49px;padding:5px 9px}
+.shell.is-compact .power-row{padding:7px 10px;gap:5px}.shell.is-compact .pill.hide-compact{display:none}
+.shell.is-compact main.chat-content{padding:8px 11px 13px}.shell.is-compact .hero{min-height:120px;padding-bottom:14px}.shell.is-compact .hero .bot-icon{width:41px;height:41px;font-size:20px}.shell.is-compact .composer{min-height:115px;padding:11px}
+.shell.is-compact .quicklinks button{padding:6px;font-size:10px}.shell.is-compact .window-title{font-size:10px}.shell.is-compact .status-strip .stub{display:none}
+@media(max-width:660px){body{padding:10px 7px 24px}.demo-top{padding:0 6px}.shell{height:calc(100dvh - 154px);min-height:460px}.hint{display:none}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="demo-top">
+  <div><strong>🎮 Gaming · Vista previa adaptable</strong><small>Prototipo visual para Codex. Sin conexión real con LM Studio ni ejecución de MCP.</small></div>
+  <div class="demo-actions">
+    <button data-preset="desktop" class="active" title="Vista horizontal">▣ Horizontal</button>
+    <button data-preset="vertical" title="Simula pantalla vertical">▯ Vertical</button>
+    <button data-preset="compact" title="Ventana pequeña">▫ Compacta</button>
+    <button data-preset="free" title="Ajusta el tamaño manualmente">⇲ Libre</button>
+    <button id="fullscreenBtn" title="Extender a pantalla completa">⛶ Pantalla completa</button>
+  </div>
+</div>
+<div class="stage">
+<section class="shell is-wide" id="shell" aria-label="Prototipo Gaming Matick" style="--left-size:226px;--right-size:276px">
+  <div class="window-title"><span>✦ LM Studio · Model Server + Gaming (simulación)</span><div class="window-dots"><span>−</span><span>▢</span><span>×</span></div></div>
+  <div class="status-strip"><span class="dot"></span><span class="server">Model Server · 127.0.0.1:1234</span><span class="stub">Vista demostrativa · no conectada</span></div>
+  <div class="main-layout" id="layout">
+    <aside class="sidebar" id="leftPane" aria-label="Proyectos y chats">
+      <div class="brand"><span class="brand-icon">🎮</span><span class="brand-txt">Gaming<small>Matick Workspace</small></span></div>
+      <button class="side-button" id="collapseLeft" title="Contraer o expandir menú"> <span class="symbol">☰</span><span class="label">Menú lateral</span></button>
+      <button class="side-button active" id="newChat"> <span class="symbol">✎</span><span class="label">Nuevo chat</span></button>
+      <button class="side-button" id="viewProjects"><span class="symbol">▤</span><span class="label">Morlet · Proyectos</span></button>
+      <button class="side-button" id="viewLocal"><span class="symbol">⌘</span><span class="label">Local · Herramientas</span></button>
+      <div class="chat-groups">
+       <div class="side-section">Conversaciones <span id="chatCount"></span></div>
+       <div class="bulk-tools"><button id="selectMode">☑ Seleccionar</button><button id="deleteSelected" hidden>Eliminar lote</button><button id="deleteAll">Vaciar todo</button></div>
+       <div id="chatList"></div>
+       <div class="side-section">Carpetas</div>
+       <button class="side-button" id="folderButton"><span class="symbol">▱</span><span class="label">Proyecto Gaming</span></button>
+      </div>
+      <div class="sidebar-footer"><span>◉</span><span>Morlet · espacio local</span></div>
+    </aside>
+    <div class="gutter left" id="leftGutter" title="Arrastra para cambiar ancho del menú"></div>
+    <section class="center" aria-label="Chat y trabajo">
+      <header class="topnav">
+        <div class="left-tools"><button class="icon-button" id="topLeftToggle" title="Mostrar/ocultar lateral izquierdo">☷</button><span class="top-title">Gaming / Matick</span></div>
+        <div class="segmented" role="group" aria-label="Modo"><button id="modeChat" class="selected" aria-pressed="true">Chat</button><button id="modeWork" aria-pressed="false">Work</button></div>
+        <div class="right-tools"><button class="icon-button" id="topRightToggle" title="Mostrar/ocultar panel de información">◫</button></div>
+      </header>
+      <div class="power-row">
+        <span class="pill">🧠 Matick</span>
+        <span class="pill hide-compact">⚙ Local · LM Studio</span>
+        <span class="pill hide-compact">▱ Morlet</span>
+        <div class="spacer"></div>
+        <span class="smalltext" id="powerText">Desactivado</span>
+        <button id="powerSwitch" class="switch" role="switch" aria-checked="false" title="Interruptor demostrativo: no inicia procesos"><span class="ball">○</span><b>OFF</b></button>
+      </div>
+      <main class="chat-content" id="chatContent">
+        <div class="hero" id="hero">
+          <span class="bot-icon">✧</span>
+          <h1 id="heroTitle">¿En qué trabajamos?</h1>
+          <p id="heroSub">Matick, Local y Morlet, en un solo espacio.</p>
+        </div>
+        <div class="messages" id="messages" hidden></div>
+        <div class="composer-wrap">
+          <div class="composer">
+            <textarea id="prompt" placeholder="Trabaja con Matick..." aria-label="Mensaje para Matick" rows="2"></textarea>
+            <div class="composer-bottom"><div class="actions"><span class="pill">＋</span><span class="pill">⌘ Local</span></div><div class="actions"><span class="smalltext" id="modelText">Demo · sin API</span><button class="circle-send" id="send" title="Enviar mensaje de prueba">➤</button></div></div>
+          </div>
+          <div class="quicklinks" id="quicklinks"><button data-fill="Ayúdame a revisar mi proyecto Gaming">⌘ Revisar proyecto</button><button data-fill="Escribe código para un MCP seguro">⌨ Escribir código</button><button data-fill="Comprueba el diseño para pantalla vertical">▯ Pantalla vertical</button></div>
+        </div>
+      </main>
+    </section>
+    <div class="gutter right" id="rightGutter" title="Arrastra para cambiar ancho del panel"></div>
+    <aside class="right-panel" id="rightPane" aria-label="Detalles de Local">
+      <div class="head" id="rightHead"><strong>⚙ Local · Detalles</strong><div class="panel-btns"><button id="floatRight" title="Acoplar o desacoplar panel">⇱</button><button id="closeRight" title="Ocultar panel">×</button></div></div>
+      <div class="info-card"><h3>Matick · Modelo</h3>
+        <div class="line"><span>Motor</span><b>LM Studio</b></div>
+        <div class="line"><span>Modelo</span><b>matick-gemma-4-e2b-mexicano-v2</b></div>
+        <div class="line"><span>Endpoint</span><b>localhost:1234</b></div>
+        <div class="line"><span>Estado</span><b>Sin conectar (demo)</b></div>
+      </div>
+      <div class="info-card"><h3>Gaming · MCP</h3><div class="line"><span>chat_server.mcp</span><b>Sin activar</b></div><div class="line"><span>gaming (futuro)</span><b>Por implementar</b></div><div class="line"><span>Inicio automático</span><b>No</b></div></div>
+      <div class="info-card"><h3>Adaptación de ventana</h3><div class="line"><span>Ancho actual</span><b id="widthReadout">—</b></div><div class="line"><span>Modo</span><b id="layoutReadout">Horizontal</b></div><div class="detail">Arrastra la esquina inferior derecha para estirar o encoger toda la ventana.</div></div>
+      <p class="detail">Esta vista previa no modifica LM Studio, mcp.json ni conversaciones reales.</p>
+    </aside>
+  </div>
+</section>
+</div>
+<p class="hint" style="max-width:1480px;margin:12px auto 0">Prueba: selecciona <b>Vertical</b>, arrastra la esquina inferior derecha del marco, oculta los laterales o desacopla el panel derecho. El interruptor y los mensajes son <b>simulados</b>.</p>
+<script>
+(function(){
+"use strict";
+const byId=(id)=>document.getElementById(id);
+const shell=byId("shell"),left=byId("leftPane"),right=byId("rightPane"),layout=byId("layout");
+const state={left:true,right:true,float:false,leftSize:226,rightSize:276,compact:false,peek:false,power:false,mode:"chat",selected:new Set(),selectMode:false,active:null,nextId:4,conversations:[
+{id:1,title:"Diseño Gaming",messages:[{role:"assistant",text:"Este es un chat de ejemplo del diseño Gaming. Puedes borrarlo o iniciar uno nuevo."}]},
+{id:2,title:"Matick y LM Studio",messages:[{role:"assistant",text:"Aquí aparecerá la conversación real cuando Codex implemente la conexión local."}]},
+{id:3,title:"Pantalla vertical",messages:[{role:"assistant",text:"Al cambiar la forma de la ventana, los paneles se reorganizan para mantener el chat legible."}]}
+]};
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function updateLayout(){
+ const width=shell.getBoundingClientRect().width;
+ state.compact=width<850;
+ shell.classList.toggle("is-compact",state.compact);shell.classList.toggle("is-wide",!state.compact);
+ shell.classList.toggle("left-closed",!state.left);shell.classList.toggle("right-closed",!state.right);shell.classList.toggle("right-floating",state.float&&state.right);
+ left.classList.toggle("popout",state.compact&&state.peek);
+ shell.style.setProperty("--left-size",(state.left?state.leftSize:56)+"px");
+ shell.style.setProperty("--right-size",(state.right&&!state.float?state.rightSize:0)+"px");
+ byId("widthReadout").textContent=Math.round(width)+" px";
+ byId("layoutReadout").textContent=state.compact?"Vertical / compacto":"Horizontal / amplio";
+ byId("floatRight").title=state.float?"Acoplar panel":"Desacoplar panel";
+}
+function setLeft(open){
+ if(state.compact){state.peek=typeof open==="boolean"?open:!state.peek;}
+ else{state.left=typeof open==="boolean"?open:!state.left;}
+ updateLayout();
+}
+function setRight(open){state.right=typeof open==="boolean"?open:!state.right;updateLayout();}
+function nav(){
+ byId("chatList").innerHTML=state.conversations.map(c=>'<div class="chat-item '+(state.active===c.id?'active':'')+'">'+(state.selectMode?'<input type="checkbox" aria-label="Seleccionar '+safe(c.title)+'" data-check="'+c.id+'" '+(state.selected.has(c.id)?'checked':'')+'>':'')+'<button data-open="'+c.id+'">'+safe(c.title)+'</button></div>').join("");
+ byId("chatCount").textContent="("+state.conversations.length+")";
+ byId("deleteSelected").hidden=!state.selectMode;
+ byId("selectMode").textContent=state.selectMode?"Cancelar selección":"☑ Seleccionar";
+ byId("deleteSelected").textContent="Eliminar ("+state.selected.size+")";
+ byId("deleteSelected").disabled=state.selected.size===0;
+ byId("chatList").querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{const id=Number(b.dataset.open);if(state.selectMode){toggleSelected(id);}else{state.active=id;state.peek=false;render();updateLayout();}}));
+ byId("chatList").querySelectorAll("[data-check]").forEach(b=>b.addEventListener("change",()=>toggleSelected(Number(b.dataset.check))));
+}
+function toggleSelected(id){if(state.selected.has(id))state.selected.delete(id);else state.selected.add(id);nav();}
+function render(){
+ nav();const active=state.conversations.find(c=>c.id===state.active);
+ byId("hero").hidden=!!active;
+ byId("messages").hidden=!active;
+ byId("heroTitle").textContent=state.mode==="chat"?"¿En qué trabajamos?":"¿Qué proyecto desarrollamos?";
+ byId("heroSub").textContent=state.mode==="chat"?"Matick, Local y Morlet, en un solo espacio.":"Work: una vista de proyecto para el futuro agente local.";
+ if(active){
+  const host=byId("messages");host.replaceChildren();
+  active.messages.forEach(m=>{
+   const div=document.createElement("div");div.className="message "+m.role;
+   const label=document.createElement("span");label.className="message-label";label.textContent=m.role==="user"?"MORLET":"MATICK · EJEMPLO";
+   div.append(label,document.createTextNode(m.text));host.append(div);
+  });
+  byId("chatContent").scrollTop=byId("chatContent").scrollHeight;
+ }
+ byId("modeChat").classList.toggle("selected",state.mode==="chat");byId("modeWork").classList.toggle("selected",state.mode==="work");
+ byId("modeChat").setAttribute("aria-pressed",state.mode==="chat");byId("modeWork").setAttribute("aria-pressed",state.mode==="work");
+}
+function newChat(){state.active=null;state.peek=false;byId("prompt").value="";render();updateLayout();}
+function toast(message){const old=byId("toast");if(old)old.remove();const box=document.createElement("div");box.id="toast";box.textContent=message;box.style.cssText="position:absolute;z-index:30;bottom:18px;left:50%;transform:translateX(-50%);background:#343e53;border:1px solid #6980b8;padding:10px 14px;border-radius:12px;box-shadow:0 8px 35px #0008;max-width:90%;text-align:center;font-size:12px";shell.append(box);setTimeout(()=>{if(box.isConnected)box.remove();},3300);}
+function send(){
+ const text=byId("prompt").value.trim();if(!text)return;
+ if(!state.power){toast("Activa el switch ON para probar el chat simulado; no inicia ningún MCP.");return;}
+ let chat=state.conversations.find(c=>c.id===state.active);
+ if(!chat){chat={id:state.nextId++,title:text.slice(0,32),messages:[]};state.conversations.unshift(chat);state.active=chat.id;}
+ chat.messages.push({role:"user",text});
+ chat.messages.push({role:"assistant",text:"Respuesta de demostración: Matick respondería aquí a través de Local / LM Studio. Este prototipo no ejecuta modelos ni MCP."});
+ byId("prompt").value="";render();
+}
+function removeChats(ids){
+ if(!ids.length)return;
+ if(!window.confirm("¿Eliminar "+ids.length+" conversación(es) de ejemplo? Esta acción afecta solo a esta vista previa."))return;
+ state.conversations=state.conversations.filter(c=>!ids.includes(c.id));
+ if(ids.includes(state.active))state.active=null;
+ state.selected.clear();state.selectMode=false;render();toast("Chats de prueba eliminados.");
+}
+byId("collapseLeft").onclick=()=>setLeft();
+byId("topLeftToggle").onclick=()=>setLeft();
+byId("topRightToggle").onclick=()=>setRight();
+byId("closeRight").onclick=()=>setRight(false);
+byId("floatRight").onclick=()=>{state.float=!state.float;state.right=true;updateLayout();};
+byId("newChat").onclick=newChat;
+byId("modeChat").onclick=()=>{state.mode="chat";render();};
+byId("modeWork").onclick=()=>{state.mode="work";render();};
+byId("selectMode").onclick=()=>{state.selectMode=!state.selectMode;state.selected.clear();nav();};
+byId("deleteSelected").onclick=()=>removeChats(Array.from(state.selected));
+byId("deleteAll").onclick=()=>removeChats(state.conversations.map(c=>c.id));
+byId("send").onclick=send;
+byId("prompt").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}});
+byId("powerSwitch").onclick=()=>{
+ state.power=!state.power;
+ const b=byId("powerSwitch");b.classList.toggle("is-on",state.power);b.setAttribute("aria-checked",String(state.power));b.querySelector("b").textContent=state.power?"ON":"OFF";b.querySelector(".ball").textContent=state.power?"✓":"○";
+ byId("powerText").textContent=state.power?"Demo activada":"Desactivado";
+ toast(state.power?"Modo demo ON: solo respuestas simuladas; no hay conexión real.":"Gaming en modo demo OFF.");
+};
+byId("viewProjects").onclick=()=>toast("Morlet: el explorador de proyectos será funcional en la implementación.");
+byId("folderButton").onclick=()=>toast("Carpeta de ejemplo: Proyecto Gaming");
+byId("viewLocal").onclick=()=>{setRight(true);toast("Local: detalle de modelo y MCP de ejemplo.");};
+document.querySelectorAll("[data-fill]").forEach(b=>b.onclick=()=>{byId("prompt").value=b.dataset.fill;byId("prompt").focus();});
+const presets={desktop:{width:"min(1450px, 100%)",height:"790px"},vertical:{width:"min(510px, 100%)",height:"840px"},compact:{width:"min(405px, 100%)",height:"630px"},free:{width:"min(100%, 1270px)",height:"730px"}};
+document.querySelectorAll("[data-preset]").forEach(btn=>btn.addEventListener("click",()=>{
+ const key=btn.dataset.preset;const v=presets[key];shell.style.width=v.width;shell.style.height=v.height;document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b===btn));
+ if(key!=="desktop")state.peek=false;
+ updateLayout();
+}));
+byId("fullscreenBtn").onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await shell.requestFullscreen();}catch(e){toast("Pantalla completa no disponible aquí.");}};
+document.addEventListener("fullscreenchange",()=>{if(document.fullscreenElement){shell.style.width="100%";shell.style.height="100%";}else{shell.style.width="min(1450px, 100%)";shell.style.height="790px";}updateLayout();});
+function resizeHandle(handle,which){
+ let initial=null;
+ handle.addEventListener("pointerdown",e=>{
+  if(state.compact|| (which==="right"&&state.float))return;
+  e.preventDefault();handle.setPointerCapture(e.pointerId);
+  initial={x:e.clientX,left:state.leftSize,right:state.rightSize};
+  handle.classList.add("dragging");
+ });
+ handle.addEventListener("pointermove",e=>{if(!initial)return;
+  const width=shell.clientWidth;
+  if(which==="left")state.leftSize=Math.max(175,Math.min(Math.min(340,width-440),initial.left+e.clientX-initial.x));
+  else state.rightSize=Math.max(225,Math.min(Math.min(390,width-470),initial.right+initial.x-e.clientX));
+  updateLayout();
+ });
+ function done(){initial=null;handle.classList.remove("dragging");}
+ handle.addEventListener("pointerup",done);handle.addEventListener("pointercancel",done);
+}
+resizeHandle(byId("leftGutter"),"left");resizeHandle(byId("rightGutter"),"right");
+let drag=null;
+byId("rightHead").addEventListener("pointerdown",e=>{
+ if(!state.float||e.target.closest("button"))return;
+ e.preventDefault();byId("rightHead").setPointerCapture(e.pointerId);
+ drag={x:e.clientX,y:e.clientY,right:parseFloat(getComputedStyle(shell).getPropertyValue("--float-right"))||12,top:parseFloat(getComputedStyle(shell).getPropertyValue("--float-top"))||65};
+});
+byId("rightHead").addEventListener("pointermove",e=>{if(!drag)return;const maxRight=Math.max(4,shell.clientWidth-110),maxTop=Math.max(0,layout.clientHeight-70);shell.style.setProperty("--float-right",Math.max(4,Math.min(maxRight,drag.right+drag.x-e.clientX))+"px");shell.style.setProperty("--float-top",Math.max(0,Math.min(maxTop,drag.top+e.clientY-drag.y))+"px");});
+byId("rightHead").addEventListener("pointerup",()=>drag=null);
+const ro=new ResizeObserver(updateLayout);ro.observe(shell);
+render();updateLayout();
+})();
+</script>
+</body>
+</html>
