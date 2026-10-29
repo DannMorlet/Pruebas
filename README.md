@@ -53,3 +53,7 @@ La documentación de diseño está disponible. **El prototipo navegable todavía
 ### Principio de implementación
 
 El objetivo es que **se vea integrado** a la vista Model Server, pero no se presupone una API oficial de LM Studio para inyectar paneles en su interfaz. El primer enfoque seguro a evaluar es una **ventana compañera nativa con acoplamiento visual mediante las API de ventanas de Windows**, sin DLL injection ni parches al ejecutable. La implementación real deberá validar los límites de este enfoque y obtener consentimiento para control de pantalla/PC.
+
+## Integración obligatoria con mcp.json
+
+**Antes de dar Gaming por implementado**, Codex debe registrar el servidor de herramientas en el `mcp.json` real de LM Studio, previa copia de seguridad, pruebas de arranque y fusión sin perder entradas existentes. Ver [guía MCP](docs/MCP_JSON.md) y [plantilla no activada](examples/gaming.mcp.example.json). La interfaz acoplable es un componente distinto: `mcp.json` no modifica la UI de LM Studio. La plantilla no debe instalarse hasta que exista y se pruebe `server.py`.
