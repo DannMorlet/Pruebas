@@ -17,14 +17,16 @@
 
 | Archivo | Propósito |
 | --- | --- |
-| Prototipo visual (pendiente) | Se diseñará y verificará antes de la implementación con Codex |
+| [Prototipo visual adaptable](prototype/index.html) | Demo HTML: vistas horizontal/vertical/compacta, paneles redimensionables y chats simulados |
 | [Especificación UX](docs/UX.md) | Paneles, modos, switch y administración de conversaciones |
 | [Arquitectura](docs/ARQUITECTURA.md) | Integración segura con LM Studio / Windows / MCP, ciclo de vida, memoria |
 | [Trabajo para Codex](docs/CODEX_HANDOFF.md) | Pasos y criterios de aceptación antes de implementar |
 
 ## Estado de los entregables
 
-La documentación de diseño está disponible. **El prototipo navegable todavía no está publicado**; no hay aplicación instalada ni conexión con LM Studio en este repositorio.
+El prototipo navegable ya está publicado en [prototype/index.html](prototype/index.html). Puedes descargar ese archivo y abrirlo con cualquier navegador. **No es una aplicación instalada, no se conecta a LM Studio y no ejecuta MCP**.
+
+Para probar su adaptación, usa los botones **Horizontal / Vertical / Compacta / Libre** o arrastra la esquina inferior derecha del marco. Puedes abrir/cerrar las barras laterales, cambiar su ancho en modo horizontal y desacoplar el panel derecho dentro de la simulación. El acoplamiento real a la ventana de LM Studio requiere implementación y pruebas Windows.
 
 ## Experiencia deseada
 
