@@ -22,6 +22,11 @@
 | [Arquitectura](docs/ARQUITECTURA.md) | Integración segura con LM Studio / Windows / MCP, ciclo de vida, memoria |
 | [Trabajo para Codex](docs/CODEX_HANDOFF.md) | Pasos y criterios de aceptación antes de implementar |
 
+## Abrir la demostración en el navegador
+
+- [**Abrir Gaming: vista previa interactiva**](https://htmlpreview.github.io/?https://github.com/DannMorlet/Pruebas/blob/main/prototype/index.html) (servicio de vista previa externo para HTML público; **no introduzcas información privada**).
+- [Archivo fuente para descargar y abrir sin conexión](prototype/index.html) (GitHub > Raw > Guardar como `index.html`).
+
 ## Estado de los entregables
 
 El prototipo navegable ya está publicado en [prototype/index.html](prototype/index.html). Puedes descargar ese archivo y abrirlo con cualquier navegador. **No es una aplicación instalada, no se conecta a LM Studio y no ejecuta MCP**.
