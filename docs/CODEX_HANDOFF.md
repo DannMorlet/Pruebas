@@ -32,3 +32,7 @@ Este documento describe requisitos y no acredita que exista una integración fun
 - Medidas de memoria/CPU documentadas.
 
 Nomenclatura: Gaming (marca), Matick (asistente), Local (motor), Morlet (entorno). No usar nombres anteriores para la marca.
+
+## Requisito de entrega: mcp.json
+
+La implementación final debe incluir un servidor MCP Gaming funcional y una incorporación segura al `mcp.json` **real** de LM Studio, preservando y respaldando todos los MCP existentes. Usar [guía](MCP_JSON.md) y [plantilla](../examples/gaming.mcp.example.json). Validar initialize/list-tools/tool-call/shutdown, consumo de RAM y el comportamiento del switch antes de habilitarlo. **No confundir MCP con inyección de paneles en la UI**. No instalar la plantilla antes de crear y probar el servidor.
