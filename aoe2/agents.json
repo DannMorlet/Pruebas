@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "project": "Morlet AoE2DE — siete IAs",
+  "status": "planning_only",
+  "ai_count": 7,
+  "game": "Age of Empires II Definitive Edition",
+  "bridge": {
+    "provider": "AoE2Control Agent Bridge v3",
+    "enabled": false,
+    "mode": "single_player_only",
+    "omniscient": false,
+    "use_user_mouse_keyboard": false,
+    "execute_by_default": false,
+    "allow_remote_command_execution": false
+  },
+  "resources": {
+    "fair_play": true,
+    "bonus_enabled": false,
+    "bonuses_by_age": {
+      "dark": 50,
+      "feudal": 100,
+      "castle": 200,
+      "imperial": 500
+    },
+    "bonus_resource_choices": [
+      "food",
+      "wood",
+      "gold",
+      "stone"
+    ],
+    "bonus_cooldown_seconds_min": 900,
+    "max_bonus_events_per_age": 2,
+    "tribes_transfer_from_owned_stock_only": true
+  },
+  "chat": {
+    "target_phrases_per_ai": 500,
+    "implemented_phrases_per_ai": 0,
+    "minimum_delay_seconds": 120,
+    "read_and_reply_to_chat": false
+  },
+  "lm_studio": {
+    "api_base": "http://127.0.0.1:1234/v1",
+    "automatic_model_loading": false,
+    "loaded_model_id": null
+  },
+  "gpu_subagents": {
+    "shared_model_preferred": true,
+    "inference_enabled": false,
+    "shared_option": {
+      "model_family": "SmolLM2-360M-Instruct",
+      "quantization": "Q8_0",
+      "model_file_size_mb_approx": 386,
+      "alternative_quantization": "Q4_K_M",
+      "alternative_file_size_mb_approx": 271
+    },
+    "dual_option": {
+      "model_family": "SmolLM2-135M-Instruct",
+      "quantization": "Q8_0",
+      "model_file_size_mb_per_agent_approx": 145
+    },
+    "disk_size_is_not_runtime_ram_vram_budget": true,
+    "max_inference_output_tokens": 128,
+    "simulated_responses_only_by_default": true
+  },
+  "agents": [
+    {
+      "number": 1,
+      "name": "Matick",
+      "per": "Matick.per",
+      "ai": "Matick.ai",
+      "source": "Agua_de_Morlet.per",
+      "engine": "lm_studio_gpu",
+      "description": "LLM de Matick cargado por el usuario en RTX 5060",
+      "ready": false
+    },
+    {
+      "number": 2,
+      "name": "Nemesis",
+      "per": "Nemesis.per",
+      "ai": "Nemesis.ai",
+      "source": "Nemesis.per",
+      "engine": "openvino_intel_npu_experimental",
+      "description": "Selector estratégico NPU experimental; no microcontrol",
+      "ready": false
+    },
+    {
+      "number": 3,
+      "name": "Tyran",
+      "per": "Tyran.per",
+      "ai": "Tyran.ai",
+      "source": "Agua_de_Mazapan.per",
+      "engine": "gpu_small_agent",
+      "role_key": "tyran",
+      "description": "Prioridad propuesta: maniobra militar",
+      "ready": false
+    },
+    {
+      "number": 4,
+      "name": "Mazapan",
+      "per": "Mazapan.per",
+      "ai": "Mazapan.ai",
+      "source": "Capuchino_de-Mazapan.per",
+      "engine": "gpu_small_agent",
+      "role_key": "mazapan",
+      "description": "Prioridad propuesta: economía creativa y supervivencia",
+      "ready": false
+    },
+    {
+      "number": 5,
+      "name": "Nutella",
+      "per": "Nutella.per",
+      "ai": "Nutella.ai",
+      "source": "AI (HD version).per",
+      "engine": "per_rules",
+      "description": "Defensa de profundidad y recuperación",
+      "ready": false
+    },
+    {
+      "number": 6,
+      "name": "Gemini",
+      "per": "Gemini.per",
+      "ai": "Gemini.ai",
+      "source": "AI (HD version).per",
+      "engine": "per_rules",
+      "description": null,
+      "awaiting_external_proposal": true,
+      "ready": false
+    },
+    {
+      "number": 7,
+      "name": "Copilot",
+      "per": "Copilot.per",
+      "ai": "Copilot.ai",
+      "source": "AI (HD version).per",
+      "engine": "per_rules",
+      "description": null,
+      "awaiting_external_proposal": true,
+      "ready": false
+    }
+  ]
+}
