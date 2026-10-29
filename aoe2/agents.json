@@ -83,8 +83,13 @@
       "ai": "Nemesis.ai",
       "source": "Nemesis.per",
       "engine": "openvino_intel_npu_experimental",
-      "description": "Selector estratégico NPU experimental; no microcontrol",
-      "ready": false
+      "description": "Nemesis (#2): Qwen3-0.6B descargado en C:\\NPU según el usuario; uso en Intel NPU experimental y sin verificación de compatibilidad",
+      "ready": false,
+      "model_user_reported_name": "Qwen3-0.6B",
+      "local_model_directory": "C:\\NPU",
+      "download_status": "El usuario confirmó descarga; formato y archivos exactos pendientes de comprobar",
+      "npu_execution_status": "Pendiente verificar OpenVINO + Intel NPU; descargado no significa compatible ni funcionando",
+      "local_model_autoload": false
     },
     {
       "number": 3,
