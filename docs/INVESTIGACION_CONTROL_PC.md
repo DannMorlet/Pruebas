@@ -147,3 +147,25 @@ Se corrigió la estrategia anterior: **no descargar Qwen3.5-4B o 9B como requisi
 4. Adoptar NPU únicamente si reduce carga de GPU en una tarea útil sin ralentizar Matick ni perjudicar FPS; en otro caso dejarla apagada.
 
 Fuentes: https://www.intel.com/content/www/us/en/products/sku/241069/intel-core-ultra-5-processor-225f-20m-cache-up-to-4-90-ghz/specifications.html ; https://github.com/openvinotoolkit/openvino/blob/master/src/plugins/intel_npu/README.md ; https://docs.openvino.ai/2026/documentation/compatibility-and-support/supported-models.html ; https://docs.openvino.ai/2026/about-openvino/release-notes-openvino.html ; https://huggingface.co/allenai/OLMoE-1B-7B-0125-Instruct-GGUF ; https://huggingface.co/tensorblock/granite-3.1-3b-a800m-instruct-GGUF .
+
+## Matick #1 en Age of Empires II DE — LM Studio (puente experimental v0.2)
+
+**Se mantienen exactamente 7 IAs y sus nombres fijos.**
+
+| N.º | IA | Archivo | Motor |
+|---:|---|---|---|
+| 1 | Matick | `Matick.per` | LM Studio + RTX 5060 (puente externo) |
+| 2 | Nemesis | `Nemesis.per` | Intel NPU, integración pendiente |
+| 3 | Tyran | `Tyran.per` | Subagente de 200 MB, pendiente |
+| 4 | Mazapan | `Mazapan.per` | Subagente de 200 MB, pendiente |
+| 5 | Nutella | `Nutella.per` | Reglas tácticas propias |
+| 6 | Gemini | `Gemini.per` | Reglas tácticas propias |
+| 7 | Copilot | `Copilot.per` | Reglas tácticas propias |
+
+Se ha preparado un puente Python con solo librería estándar, entregado al usuario en un ZIP junto con 7 parejas `.ai`/`.per`. Consulta los modelos disponibles en LM Studio por `/v1/models` y utiliza `/v1/chat/completions` para sugerir decisiones. Usa Agent Bridge v3 de AoE2Control por tubería local Windows, **sin tocar el mouse o teclado del usuario**. El modo predeterminado es de previsualización; `--execute` autoriza emitir órdenes reales.
+
+El puente limita acciones, unidades y tributos, rechaza información omnisciente y no usa cheats. Matick.per conserva su motor económico/militar, pero necesita la carpeta Promisory original, no aportada. **No se han publicado los `.per` originales en este repositorio público**.
+
+**Seguridad:** AoE2Control usa inyección de DLL en AoE2DE. No instalarlo automáticamente ni desactivar Windows Defender. Se requiere instalación voluntaria y prueba únicamente en partidas individuales sin trampas. El protocolo V3 se introdujo en 1.1.1 y es incompatible con el V1.
+
+**Pruebas realizadas:** 9 tests de filtrado y simulación CLI pasados fuera de Windows. **Pendientes:** ejecución con LM Studio y juego real en el PC, revisar compatibilidad de la versión del juego, y confirmar que el `.per` mantiene el control con `Suppress Native AI` desactivado. [Guía de instalación y comandos](MATICK_AOE2_LMSTUDIO.md).
