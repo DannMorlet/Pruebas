@@ -1,4 +1,4 @@
-# GEMCO / MATICK · Morlet Workspace
+# Gaming / Matick · Morlet Workspace
 
 > **Estado:** prototipo visual y especificación de producto. **NO está integrado a LM Studio y NO modifica sus MCP ni su ejecutable.**
 >
@@ -6,10 +6,12 @@
 
 ## Identidad definitiva
 
+**Marca visual elegida por el usuario: Gaming.** Los identificadores internos de MCP existentes no se renombran sin migración controlada.
+
 - **Matick:** asistente y experiencia de chat con el modelo cargado en LM Studio.
 - **Local:** conexión local a modelos, herramientas MCP y recursos de la PC.
 - **Morlet:** espacio central para proyectos, chats, historial y flujos de trabajo.
-- **GemCo:** nombre global del entorno. **No usar Sol, Luna ni Terra** como nombres del producto.
+- **Gaming:** nombre global del entorno. **No usar Sol, Luna ni Terra** como nombres del producto.
 
 ## Entregables
 
