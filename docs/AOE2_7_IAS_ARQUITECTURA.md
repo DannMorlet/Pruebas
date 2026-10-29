@@ -11,8 +11,8 @@ Estado: documento de preparación 2026-10-29. No equivale a una integración jug
 | 3 | Tyran | Tyran.per | Agua_de_Mazapan.per | Modelo pequeño en GPU, subagente A |
 | 4 | Mazapan | Mazapan.per | Capuchino_de-Mazapan.per | Modelo pequeño en GPU, subagente B |
 | 5 | Nutella | Nutella.per | AI (HD version).per | Reglas autónomas + conocimiento táctico |
-| 6 | Gemini | Gemini.per | AI (HD version).per | Personalidad y táctica pendientes de propuesta Gemini |
-| 7 | Copilot | Copilot.per | AI (HD version).per | Personalidad y táctica pendientes de propuesta Copilot |
+| 6 | Gemini | Gemini.per | AI (HD version).per | Propuesta Gemini recibida: Tesorero/Explorador, economía por edad, flancos |
+| 7 | Copilot | Copilot.per | AI (HD version).per | Propuesta Copilot recibida: comandante adaptativo y nueve especialistas |
 
 Aegis, Promisory, Apex y los archivos de HD son dependencias o antecedentes, NO jugadores adicionales. Los siete necesitan sus archivos .ai emparejados y los módulos .per compatibles que carguen.
 
@@ -53,8 +53,8 @@ El puente de AoE2Control es de un tercero que utiliza componentes dentro del pro
 - Tyran (#3): subagente GPU centrado en decisiones militares y presión controlada; personalidad definitiva adaptable al usuario.
 - Mazapan (#4): subagente GPU centrado en adaptación, supervivencia y economía creativa; personalidad definitiva adaptable al usuario.
 - Nutella (#5): IA táctica autónoma .per, con fortificación, resistencia y sorpresa.
-- Gemini (#6): ESPERAR texto de diseño solicitado por el usuario a Gemini; no fingir que conocemos su propuesta.
-- Copilot (#7): ESPERAR texto de diseño solicitado por el usuario a Copilot; no fingir que conocemos su propuesta ni que usa el servicio comercial.
+- Gemini (#6): Ver documento de perfiles recibido de Gemini; no fingir que conocemos su propuesta.
+- Copilot (#7): Ver documento de perfiles recibido de Copilot; no fingir que conocemos su propuesta ni que usa el servicio comercial.
 
 ## Trabajo de Codex en la PC
 
@@ -62,9 +62,15 @@ El puente de AoE2Control es de un tercero que utiliza componentes dentro del pro
 - Probar una IA sin controlador externo, luego una IA con bridge en modo simulación, luego Matick y después los dos agentes GPU.
 - Medir VRAM real al compartir modelo, caché de contexto, latencia por decisión, RAM residente de LM Studio y FPS durante el juego. Modelos de 200 MB en disco NO garantizan procesos de 200 MB.
 - Conservar NPU opcional para Nemesis y comparar con lógica .per. Sin reiniciar ni cambiar los drivers ni Python global.
-- Incorporar textualmente las propuestas de Gemini y Copilot cuando lleguen y diferenciar requisitos de hipótesis.
+- Incorporar los requisitos ya recibidos de Gemini y Copilot distinguiendo ideas PDF de código ejecutable y verificar por etapas.
 - Construir y probar chat, intercambio de recursos, murallas, rescate de aldeanos y defensa por iteraciones pequeñas, con fallback.
 - Rechazar comandos ajenos al jugador, acceso omnisciente, ejecución de código de modelo y operaciones que usen los controles reales del usuario.
 - No declarar ninguna función jugable hasta probarla dentro de AoE2 DE. Tests unitarios fuera del juego no son suficiente.
 
 Fuentes: https://lmstudio.ai/docs/developer/openai-compat ; https://aoe2control.github.io/agent-bridge/ ; https://huggingface.co/tensorblock/SmolLM2-135M-Instruct-GGUF ; https://huggingface.co/tensorblock/SmolLM2-360M-Instruct-GGUF .
+
+## Diseños Nutella, Gemini y Copilot RECIBIDOS (2026-10-29)
+
+Ya se recibieron los perfiles: Nutella por mensaje del usuario, Gemini mediante PDF de 2 páginas y Copilot mediante PDF de 12 páginas. Los hallazgos, sus parámetros, subagentes y advertencias de que el PDF es pseudocódigo se guardaron en [AOE2_PERFILES_NUTELLA_GEMINI_COPILOT.md](AOE2_PERFILES_NUTELLA_GEMINI_COPILOT.md). Se añadieron perfiles estructurados en `aoe2/agents.json` y un planificador de propuestas para los tres en `aoe2/strategy_profiles.py` con tests por ejecutar en Windows. No confundir la propuesta con código .per ya funcional.
+
+**Recordatorio inequívoco:** la prueba preferida para Tyran (#3) y Mazapan (#4) usa UN SmolLM2-360M-Instruct cargado en GPU y DOS identidades lógicas con memoria y contexto separados, no dos medios modelos de 200 MB. Se puede optar por dos SmolLM2-135M si la calidad/rendimiento medidos lo justifican.
