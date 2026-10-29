@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "Morlet AoE2DE — siete IAs",
-  "status": "planning_only",
+  "status": "specifications_received_awaiting_implementation",
   "ai_count": 7,
   "game": "Age of Empires II Definitive Edition",
   "bridge": {
@@ -60,7 +60,10 @@
     },
     "disk_size_is_not_runtime_ram_vram_budget": true,
     "max_inference_output_tokens": 128,
-    "simulated_responses_only_by_default": true
+    "simulated_responses_only_by_default": true,
+    "shared_model_reminder": "Recordar al usuario, cuando se retome Tyran/Mazapan, probar UN modelo SmolLM2-360M-Instruct en RTX 5060 para dos agentes lógicos con memoria/prompt independientes; no son dos mitades físicas del modelo, y el consumo de VRAM puede superar el tamaño del GGUF.",
+    "shared_model_status": "planned_unverified",
+    "shared_model_approved_for_testing": true
   },
   "agents": [
     {
@@ -112,8 +115,31 @@
       "ai": "Nutella.ai",
       "source": "AI (HD version).per",
       "engine": "per_rules",
-      "description": "Defensa de profundidad y recuperación",
-      "ready": false
+      "description": "Desgaste estratégico: expansión discreta, hostigamiento económico, recuperación y bases ocultas",
+      "ready": false,
+      "personality": {
+        "source": "user_chat_2026-10-29",
+        "aggression": 65,
+        "economy_primary": 85,
+        "annoyance": 100,
+        "patience": 95,
+        "chaos": 90,
+        "source_example_economy_secondary": 90,
+        "expansion": 95,
+        "direct_conquest": 40,
+        "villager_raids": 100,
+        "sneaky_bases": 100,
+        "never_fight_fair_interpretation": "táctica sorprendente sin hacks ni recursos artificiales"
+      },
+      "logical_subagents": [
+        "Untador",
+        "Hormiga",
+        "Chocolate Negro",
+        "Avellana",
+        "Empalagador Supremo"
+      ],
+      "design_received": true,
+      "implementation_stage": "specified_only"
     },
     {
       "number": 6,
@@ -122,9 +148,50 @@
       "ai": "Gemini.ai",
       "source": "AI (HD version).per",
       "engine": "per_rules",
-      "description": null,
-      "awaiting_external_proposal": true,
-      "ready": false
+      "description": "Operaciones tácticas coordinadas: Tesorero, Explorador y ataques sincronizados",
+      "awaiting_external_proposal": false,
+      "ready": false,
+      "design_received": true,
+      "design_source": "Gemini Manual para IA de Empires 2 de .pdf (2 pages)",
+      "personality": {
+        "aggression_level": 78,
+        "economic_efficiency": 92,
+        "flank_support_weight": 88,
+        "retreat_threshold_hp_percent": 30
+      },
+      "economic_targets_by_age": {
+        "dark": {
+          "food": 55,
+          "wood": 35,
+          "gold": 10,
+          "stone": 0
+        },
+        "feudal": {
+          "food": 45,
+          "wood": 40,
+          "gold": 15,
+          "stone": 0
+        },
+        "castle": {
+          "food": 40,
+          "wood": 35,
+          "gold": 20,
+          "stone": 5
+        },
+        "imperial": {
+          "food": 35,
+          "wood": 35,
+          "gold": 20,
+          "stone": 10
+        }
+      },
+      "logical_subagents": [
+        "Tesorero",
+        "Explorador",
+        "Coordinador de ataque por edades"
+      ],
+      "implementation_stage": "specified_only",
+      "source_caveat": "PDF uses conceptual, unverified .per fragment (#load-if-defined EDAD-*, goal in action side); requires adapting/validating, not direct copying"
     },
     {
       "number": 7,
@@ -133,9 +200,41 @@
       "ai": "Copilot.ai",
       "source": "AI (HD version).per",
       "engine": "per_rules",
-      "description": null,
-      "awaiting_external_proposal": true,
-      "ready": false
+      "description": "Núcleo de planificación adaptativa: información, economía, tecnología y contracomposición",
+      "awaiting_external_proposal": false,
+      "ready": false,
+      "design_received": true,
+      "design_source": "Copilot_Strategic_Core_v7_AOE.pdf (12 pages)",
+      "personality": {
+        "adaptive": 100,
+        "economy": 95,
+        "technology": 100,
+        "military": 90,
+        "exploration": 90,
+        "risk": 45,
+        "expansion": 85
+      },
+      "logical_subagents": [
+        "Comandante Supremo",
+        "Economista",
+        "Explorador",
+        "Ingeniero",
+        "General Militar",
+        "Defensor",
+        "Analista del enemigo",
+        "Logística",
+        "Predictivo",
+        "Cazador de oportunidades"
+      ],
+      "implementation_stage": "specified_only",
+      "source_caveat": "Most PDF advanced pages repeat same description and final INI/YAML is not executable .per/.ai"
     }
+  ],
+  "pending_tasks": [
+    "Auditar y validar Promisory, siete .per/.ai en juego",
+    "Probar LM Studio bridge de Matick",
+    "Probar NPU experimental Nemesis",
+    "Probar SmolLM2-360M compartido Tyran/Mazapan y medir VRAM/FPS",
+    "Traducir propuestas Nutella Gemini Copilot a reglas jugables, sin trucos, sin parálisis económica"
   ]
 }
