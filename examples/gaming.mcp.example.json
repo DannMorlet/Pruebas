@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "gaming": {
+      "command": "C:\\Python315\\python.exe",
+      "args": [
+        "-X",
+        "utf8",
+        "C:\\Gaming\\mcp\\server.py"
+      ],
+      "env": {
+        "PYTHONUTF8": "1",
+        "GAMING_LM_STUDIO_API_BASE": "http://127.0.0.1:1234/v1"
+      }
+    }
+  }
+}
