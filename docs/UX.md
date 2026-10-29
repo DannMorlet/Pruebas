@@ -29,3 +29,11 @@ Estado: diseño, no app instalada. Inspiración: ChatGPT Codex/Work + LM Studio,
 - Cero captura continua cuando no se usa.
 - Evitar duplicar motor Chromium, preferir UI nativa.
 - Medir y documentar RAM/CPU, fugas, latencia de resize y cierres; problema anterior reportado de ~1 GB RAM no puede considerarse resuelto sin pruebas.
+
+## Adaptación específica a pantallas verticales
+
+- Ventana redimensionable horizontal y verticalmente, con tamaño mínimo razonable y sin relación de aspecto fija.
+- La composición debe responder a cambios del rectángulo real, no a resolución de pantalla predefinida.
+- Para anchuras estrechas, lateral izquierdo compacto y panel derecho como overlay/desacoplado; el chat y compositor conservan prioridad.
+- Al arrastrar entre monitores, tratar DPI diferente, cambio de monitor, maximizar/restaurar y arrastrar esquinas sin congelar la ventana.
+- El [prototipo HTML](../prototype/index.html) permite comprobar visualmente modos horizontal, vertical, compacto y libre; no implementa todavía seguimiento Win32 del proceso LM Studio.
