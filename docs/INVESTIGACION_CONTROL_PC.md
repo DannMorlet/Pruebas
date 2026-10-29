@@ -69,3 +69,52 @@ Enviar primero acciones tipadas y lotes deterministas; no generar cientos de cic
 - https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput
 
 **Estado:** documento de investigación; no se ha instalado ni conectado nuevo software a la PC del usuario. Se debe implementar en rama y validar con Codex local.
+
+
+## Recomendación personalizada — RTX 5060 8 GB, Core Ultra 5 225F, 32 GB DDR5-6000
+
+**Decisión principal:** Matick en LM Studio con **Qwen3.5-4B Q4** como agente general; **MCP for Blender** (`ahujasid/mcp-for-blender`, nombre actualizado, paquete `mcp-for-blender`) para modificar escenas mediante `bpy` y código Python; **Windows-MCP** solo como capa de control de ventanas, teclado, mouse y elementos UIA; **AutoHotkey v2** opcional para macros repetitivas de muy baja latencia. Mantener los MCP preexistentes, inspeccionar primero y evitar funciones duplicadas.
+
+### Modos de recursos
+
+- **Gaming competitivo:** juego con prioridad sobre toda la VRAM; Gaming-Matick OFF de forma predeterminada. Si se necesitan tareas de IA puntuales, probar E2B o Qwen3.5-2B Q4 bajo demanda y descargar el modelo al terminar. No prometer ausencia de penalización de FPS.
+- **Blender + Matick:** Qwen3.5-4B Q4, contexto inicial 4K–8K y herramientas de escena por `bpy`; limitar viewport/materiales según VRAM y evitar render Cycles GPU simultáneo con inferencia. Usar Windows-MCP para la UI solo si no hay API adecuada.
+- **Calidad máxima (sin juego):** probar Qwen3.5-9B Q4; el modelo y caché pueden llenar casi toda la VRAM, así que reducir contexto o cambiar a Qwen3.5-4B cuando haya falta de memoria.
+
+**Memoria:** tener 32 GB instalados NO permite mantener los 32 GB físicamente libres con Windows y Blender abiertos. Meta realista: evitar RAM offload del modelo, usar VRAM con margen, medir consumo de Windows y aplicaciones y poner límite al uso adicional de Gaming; descargar los modelos al dejar de usarlos.
+
+### Por qué Blender-MCP en lugar de solo controlar el mouse
+
+La API Python de Blender (`bpy`) permite operaciones deterministas y compuestas (crear mallas, asignar materiales, mover objetos, configurar luces, cámaras, guardar escenas), que ahorran ciclos captura→razonamiento→clic. El MCP de Blender expone información de la escena y ejecución de Python. Para drag-and-drop, cuadros de diálogo o acciones fuera de Blender, usar Windows-MCP con la intervención humana y control permitido.
+
+**Cuidado:** la función de ejecutar código de Blender puede ejecutar Python arbitrario; usar `BLENDER_MCP_SAFE_MODE=1`, acceso del socket únicamente localhost y hacer copias de seguridad de .blend antes de ejecutar tareas. Esta protección es una barrera preventiva, no una garantía contra todo posible script.
+
+### Integración gradual en mcp.json
+
+- No pegar una plantilla que reemplace el archivo actual. Primero hacer backup, validar JSON, comparar IDs existentes y añadir exclusivamente la entrada `blender` a `mcpServers` si no existe.
+- **Ejemplo de una sola entrada** (NO es un mcp.json completo; NO se instala hasta comprobar ruta real de uvx y addon):
+
+```json
+"blender": {
+  "command": "uvx",
+  "args": ["--python", "3.11", "mcp-for-blender"],
+  "env": {
+    "UV_PYTHON_PREFERENCE": "only-managed",
+    "BLENDER_MCP_SAFE_MODE": "1",
+    "DISABLE_TELEMETRY": "true"
+  }
+}
+```
+
+- La versión de Windows-MCP actual requiere Python >=3.14; usar un entorno virtual separado. El paquete MCP for Blender se puede ejecutar con `uvx` usando Python 3.11 gestionado por uv para esquivar incompatibilidades con Python 3.15.
+- La opción `uvx mcp-for-blender setup` puede cambiar archivos de configuración; hacer `--dry-run` o una instalación manual controlada tras respaldos. Confirmar el procedimiento en la versión instalada.
+- Apagado real: algunos clientes inician servidores MCP automáticamente al habilitarlos; un switch dentro de Gaming no garantiza cero procesos si el host los deja activos. Por eso, iniciar cuando se solicite, dejar servidores pasivos en reposo y verificar con el administrador de tareas.
+
+### Datos verificados y pruebas pendientes
+
+- Intel [Core Ultra 5 225F](https://www.intel.com/content/www/us/en/products/sku/241069/intel-core-ultra-5-processor-225f-20m-cache-up-to-4-90-ghz/specifications.html): 10 núcleos (6P+4E), NPU Intel AI Boost de 13 TOPS INT8; no dar por hecho que LM Studio pueda ejecutar sin ajustes modelos 2–9B en NPU.
+- Google [Gemma 4](https://ai.google.dev/gemma/docs/core): E2B Q4_0 ~2.9 GB y E4B Q4_0 ~4.5 GB estimados con overhead; para Qwen3.5 Q4 2B/4B/9B usar medición de tamaño de modelo y KV cache en LM Studio, no interpretar el tamaño descargado como uso total.
+- [Qwen3.5-4B en LM Studio](https://www.lmstudio.ai/models/qwen/qwen3.5-4b): ofrece visión y razonamiento; comprobar fiabilidad de llamadas a herramientas antes de dar por completada automatización de Blender.
+- [MCP for Blender actualizado](https://github.com/ahujasid/mcp-for-blender), [Windows-MCP](https://github.com/CursorTouch/Windows-MCP) y [Blender hardware](https://www.blender.org/download/requirements/).
+
+**Verificación requerida en PC:** medir 10 min CPU/RAM idle, picos VRAM y FPS de juego con modelo OFF y ON, ejecución segura de escena .blend de prueba, cancelación, restauración del usuario sobre el mouse y rollback del `mcp.json`.
