@@ -1,0 +1,10 @@
+{
+  "format": "family/1",
+  "type": "edition",
+  "id": "conquista.family.ultimate",
+  "enabled": false,
+  "generations": ["1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0", "10.0", "11.0"],
+  "max_fps": 1200,
+  "renderer": "not_implemented",
+  "frame_generation": "reserved"
+}
