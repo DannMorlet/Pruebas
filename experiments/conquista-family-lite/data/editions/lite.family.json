@@ -1,0 +1,10 @@
+{
+  "format": "family/1",
+  "type": "edition",
+  "id": "conquista.family.lite",
+  "enabled": true,
+  "generations": ["1.0", "2.0"],
+  "max_fps": 60,
+  "default_fps": 30,
+  "renderer": "not_implemented"
+}

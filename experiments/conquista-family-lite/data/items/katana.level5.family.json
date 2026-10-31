@@ -1,0 +1,10 @@
+{
+  "format": "family/1",
+  "type": "item_visual",
+  "entity_id": "weapon.katana.level5",
+  "visuals": {
+    "1.0": { "model": "concept/katana_basic", "effect": "none" },
+    "2.0": { "model": "concept/katana_classic", "effect": "soft_glow" }
+  },
+  "fallback": { "model": "concept/katana_basic", "effect": "none" }
+}
