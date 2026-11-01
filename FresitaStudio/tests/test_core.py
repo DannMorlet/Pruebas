@@ -38,7 +38,7 @@ class FresitaTests(unittest.TestCase):
 
     def test_auditoria_y_deduplicacion(self):
         source=core.BASE/"auditoria.jsonl"
-        source.write_text("\\n".join([
+        source.write_text("\n".join([
             json.dumps({"text":"Texto de entrenamiento A"}),
             json.dumps({"text":"  texto   de entrenamiento a "}),
             json.dumps({"text":"Texto de entrenamiento B"}),
@@ -55,7 +55,7 @@ class FresitaTests(unittest.TestCase):
         source=core.BASE/"split.jsonl"
         rows=[{"text":f"Texto de ejemplo número {i:03d} para prueba"} for i in range(20)]
         rows.append(rows[0])
-        source.write_text("\\n".join(json.dumps(x,ensure_ascii=False) for x in rows),encoding="utf-8")
+        source.write_text("\n".join(json.dumps(x,ensure_ascii=False) for x in rows),encoding="utf-8")
         a,b,nt,nv=core.split_dataset(source)
         self.assertEqual((nt,nv),(18,2))
         ta={json.loads(x)["text"] for x in a.read_text(encoding="utf-8").splitlines()}
@@ -69,7 +69,7 @@ class FresitaTests(unittest.TestCase):
 
     def test_split_rechaza_filas_invalidas(self):
         source=core.BASE/"malos.jsonl"
-        source.write_text("no es json\\n",encoding="utf-8")
+        source.write_text("no es json\n",encoding="utf-8")
         with self.assertRaisesRegex(ValueError,"inválidas"):
             core.split_dataset(source)
 
