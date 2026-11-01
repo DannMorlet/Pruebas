@@ -1,0 +1,18 @@
+{
+  "nombre": "matick-qwen-600m-prueba",
+  "base_model": "Qwen/Qwen3-0.6B",
+  "metodo": "lora",
+  "objetivo": "español mexicano y código",
+  "idioma": "es-MX",
+  "output_dir": "experiments/output/matick-qwen-600m-prueba",
+  "lora_rank": 8,
+  "lora_alpha": 16,
+  "max_seq_length": 256,
+  "batch_size": 1,
+  "gradient_accumulation_steps": 8,
+  "steps": 100,
+  "learning_rate": 0.0002,
+  "precision": "auto",
+  "dataset_path": "datasets/entrenamiento.jsonl",
+  "estado": "ejemplo, no ejecutado"
+}
