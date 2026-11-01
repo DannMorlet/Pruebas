@@ -165,11 +165,11 @@ class Fresita(tk.Tk):
         try:
             s=audit_dataset(Path(self.dataset_path.get()))
             messagebox.showinfo("Auditoría de datos",
-                f"Ejemplos válidos: {s['validos']}\\n"
-                f"Únicos: {s['unicos']}\\n"
-                f"Duplicados: {s['duplicados']}\\n"
-                f"Inválidos: {s['invalidos']}\\n"
-                f"Longitud promedio: {s['caracteres_promedio']} caracteres\\n"
+                f"Ejemplos válidos: {s['validos']}\n"
+                f"Únicos: {s['unicos']}\n"
+                f"Duplicados: {s['duplicados']}\n"
+                f"Inválidos: {s['invalidos']}\n"
+                f"Longitud promedio: {s['caracteres_promedio']} caracteres\n"
                 "No se han enviado datos a internet.")
         except (OSError,ValueError,UnicodeError) as e:
             messagebox.showerror("No se pudo auditar",str(e))
@@ -179,8 +179,8 @@ class Fresita(tk.Tk):
             train,val,nt,nv=split_dataset(Path(self.dataset_path.get()))
             self.dataset_path.set(str(train))
             messagebox.showinfo("Datos separados",
-                f"Entrenamiento: {nt} ejemplos\\n{train}\\n\\n"
-                f"Validación: {nv} ejemplos\\n{val}\\n\\n"
+                f"Entrenamiento: {nt} ejemplos\n{train}\n\n"
+                f"Validación: {nv} ejemplos\n{val}\n\n"
                 "Se seleccionó el archivo de entrenamiento. Guarda el de validación para medir calidad posteriormente.")
         except (OSError,ValueError,UnicodeError) as e:
             messagebox.showerror("No se pudo separar",str(e))
