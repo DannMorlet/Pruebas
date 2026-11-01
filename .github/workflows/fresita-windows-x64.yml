@@ -29,11 +29,12 @@ jobs:
           python -c "import struct; assert struct.calcsize('P') == 8"
           python -m compileall -q .
           python -m unittest discover -s tests -v
+          python -c "import workers.train_lora; print('Worker importado sin cargar CUDA')"
       - name: Construir Fresita.exe
         shell: pwsh
         run: |
           python -m pip install "pyinstaller>=6.15,<7"
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name Fresita --add-data "workers;workers" fresita.py
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name Fresita --add-data "workers;workers" --add-data "fresita_core.py;." fresita.py
           if (!(Test-Path dist/Fresita.exe)) { throw "Fresita.exe ausente" }
       - name: Comprobar arquitectura x64
         shell: pwsh
