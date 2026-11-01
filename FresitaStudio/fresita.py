@@ -15,6 +15,7 @@ from urllib.request import urlopen
 from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
 from fresita_metrics import list_experiments,read_history,read_summary,compare_summaries
 from fresita_quality import evaluate_predictions, save_quality_report
+from fresita_predict import generate_predictions, read_cases, local_server
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -41,6 +42,9 @@ class Fresita(tk.Tk):
         self.lr=tk.StringVar(value="0.0001")
         self.rank=tk.StringVar(value="8")
         self.endpoint=tk.StringVar(value="http://127.0.0.1:1234/v1")
+        self.benchmark_path=tk.StringVar()
+        self.benchmark_cancel=threading.Event()
+        self.benchmark_running=False
         self.gpu=tk.StringVar(value="GPU: no consultada")
         self.shell()
         self.show("Inicio")
@@ -169,7 +173,14 @@ class Fresita(tk.Tk):
         elif name=="Evaluar IA":
             c=self.card()
             self.label(c,"Calidad de respuestas · Español MX y Python",16,PINK,True)
-            self.label(c,"Importa predicciones JSONL ya generadas. No ejecuta modelos ni código Python.",10,MUTED)
+            self.label(c,"Evalúa archivos existentes o genera respuestas usando un servidor local.",10,MUTED)
+            self.field(c,"SERVIDOR LOCAL (SÓLO 127.0.0.1)",self.endpoint)
+            self.field(c,"MODELO CARGADO EN SERVIDOR LOCAL",self.model)
+            self.field(c,"BENCHMARK JSONL (PREGUNTA, REFERENCIA, CATEGORIA)",self.benchmark_path)
+            self.button(c,"Elegir benchmark",self.choose_benchmark)
+            self.button(c,"Generar predicciones y evaluar (local)",self.start_benchmark,True)
+            self.button(c,"Cancelar generación",self.cancel_benchmark)
+            self.label(c,"Se envía únicamente la pregunta a 127.0.0.1. El JSONL de salida contiene respuestas y referencias privadas; no lo subas a GitHub.",9,MUTED)
             self.button(c,"Evaluar predicciones JSONL",self.evaluate_quality,True)
             self.label(c,"Español: coincidencia normalizada y F1 de tokens. Python: coincidencia y sintaxis; no corrección funcional.",10,MUTED)
             self.label(c,"Se guardan únicamente métricas agregadas y SHA-256. Límite: 8 MB y 5,000 filas.",10,MUTED)
@@ -293,6 +304,54 @@ class Fresita(tk.Tk):
                 canvas.create_oval(x-3,y-3,x+3,y+3,fill=color,outline="")
         canvas.create_text(left,bottom+17,text=str(xmin),fill=MUTED,anchor="w",font=(FONT,9))
         canvas.create_text(right,bottom+17,text=f"Paso {xmax}",fill=MUTED,anchor="e",font=(FONT,9))
+
+    def choose_benchmark(self):
+        filename=filedialog.askopenfilename(title="Benchmark de preguntas",filetypes=[("JSONL","*.jsonl")])
+        if filename:self.benchmark_path.set(filename)
+
+    def start_benchmark(self):
+        if self.benchmark_running:
+            messagebox.showwarning("Ocupado","Ya se están generando predicciones.")
+            return
+        try:
+            endpoint=self.endpoint.get().strip()
+            model=self.model.get().strip()
+            local_server(endpoint)
+            if not model or len(model)>256:
+                raise ValueError("Especifica el identificador exacto del modelo cargado.")
+            dataset=Path(self.benchmark_path.get().strip())
+            cases=read_cases(dataset)
+            if not messagebox.askyesno("Inferencia local",
+                f"Se enviarán {len(cases)} preguntas a {endpoint}.\\n"
+                "Sólo se enviarán las preguntas, no las referencias.\\n"
+                "Los resultados privados quedarán en tu equipo. ¿Continuar?"):
+                return
+            self.benchmark_cancel.clear()
+            self.benchmark_running=True
+            self.status.set("Generando predicciones locales: 0/"+str(len(cases)))
+            threading.Thread(target=self.run_benchmark,
+                args=(dataset,endpoint,model),daemon=True).start()
+        except (OSError,ValueError,UnicodeError) as e:
+            messagebox.showerror("Benchmark no iniciado",str(e))
+
+    def run_benchmark(self,dataset,endpoint,model):
+        try:
+            out,info=generate_predictions(dataset,BASE/"experiments"/"predicciones",
+                endpoint=endpoint,model=model,
+                cancelled=self.benchmark_cancel.is_set,
+                progress=lambda i,n:self.events.put(("benchmark_progress",(i,n))))
+            report=evaluate_predictions(out)
+            saved=save_quality_report(report,BASE)
+            self.events.put(("benchmark_done",(str(out),str(saved),info["ejemplos"])))
+        except Exception as e:
+            self.events.put(("benchmark_error",str(e)))
+
+    def cancel_benchmark(self):
+        if self.benchmark_running:
+            self.benchmark_cancel.set()
+            self.status.set("Cancelando tras la solicitud local en curso...")
+        else:
+            self.status.set("No hay predicciones en curso.")
 
     def evaluate_quality(self):
         filename=filedialog.askopenfilename(title="Predicciones para evaluar",filetypes=[("JSONL","*.jsonl")])
@@ -433,10 +492,23 @@ class Fresita(tk.Tk):
                         self.console.insert("end",data+"\n")
                         self.console.see("end");self.console.configure(state="disabled")
                 if kind=="done":self.status.set("Terminado (código "+str(data)+")")
+                if kind=="benchmark_progress":
+                    self.status.set(f"Predicciones locales: {data[0]}/{data[1]}")
+                if kind=="benchmark_done":
+                    self.benchmark_running=False
+                    self.status.set(f"Evaluación local terminada: {data[2]} ejemplos")
+                    messagebox.showinfo("Benchmark terminado",
+                        f"Predicciones privadas: {data[0]}\\nReporte agregado: {data[1]}\\n"
+                        "No se envió la referencia al modelo.")
+                if kind=="benchmark_error":
+                    self.benchmark_running=False
+                    self.status.set("Benchmark cancelado o fallido")
+                    messagebox.showerror("Benchmark local",data)
         except queue.Empty:pass
         self.after(150,self.pump)
 
     def close(self):
+        self.benchmark_cancel.set()
         if self.proc and self.proc.poll() is None:
             if not messagebox.askyesno("Entrenamiento activo","¿Detener el proceso y salir?"):return
             self.proc.terminate()

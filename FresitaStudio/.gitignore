@@ -23,3 +23,7 @@ logs/
 dist/
 build/
 *.spec
+
+# Benchmarks y predicciones privados
+experiments/predicciones/
+benchmarks/

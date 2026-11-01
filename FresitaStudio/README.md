@@ -74,3 +74,7 @@ contienen huellas y métricas, nunca textos de entrenamiento.
 ## Evaluar respuestas de IA sin ejecutar código
 
 La pestaña **Evaluar IA** recibe un JSONL de predicciones ya generadas y calcula coincidencia exacta normalizada y F1 de tokens para español mexicano, además de coincidencia textual y sintaxis de Python mediante análisis AST. No carga modelos ni ejecuta el código evaluado: **sintaxis válida no implica corrección funcional**. Los reportes incluyen sólo métricas agregadas y SHA-256 del archivo, sin preguntas ni respuestas privadas. Consulta [docs/EVALUACION_CALIDAD.md](docs/EVALUACION_CALIDAD.md) para el formato y las limitaciones.
+
+## Generar predicciones locales y evaluarlas
+
+En **Evaluar IA**, Fresita ahora permite generar respuestas con un servidor OpenAI-compatible en `127.0.0.1` y evaluarlas. Sólo envía las preguntas (no referencias) y requiere confirmación. Los JSONL de predicciones contienen textos privados y permanecen en el equipo. [Guía y límites](docs/PREDICCIONES_LOCALES.md). El servidor y el modelo deben estar iniciados por el usuario. CI usa un servidor falso, no CUDA.
