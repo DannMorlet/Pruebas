@@ -1,6 +1,7 @@
 """Datos locales y herramientas puras de Fresita. No carga TensorFlow/PyTorch."""
 from __future__ import annotations
 import csv
+import hashlib
 import json
 import math
 import os
@@ -24,7 +25,7 @@ def normalize(row):
     if not isinstance(row,dict):return ""
     if isinstance(row.get("text"),str):return row["text"].strip()
     if isinstance(row.get("messages"),list):
-        return "\n".join(str(x.get("role","")+": "+x.get("content","")) for x in row["messages"] if isinstance(x,dict) and isinstance(x.get("content"),str))
+        return "\n".join(f"{str(x.get('role', 'mensaje'))}: {x['content']}" for x in row["messages"] if isinstance(x,dict) and isinstance(x.get("content"),str))
     a=next((row.get(x) for x in ("instruction","prompt","question","pregunta") if row.get(x)),None)
     b=next((row.get(x) for x in ("output","response","answer","respuesta") if row.get(x)),None)
     return f"Usuario: {a}\nAsistente: {b}" if isinstance(a,str) and isinstance(b,str) else ""
@@ -81,6 +82,86 @@ def clean_dataset(path):
     with target.open("x",encoding="utf-8") as f:
         for value in clean:f.write(json.dumps({"text":value},ensure_ascii=False)+"\n")
     return target,len(clean)
+
+
+def _iter_dataset_text(path):
+    """Lee JSONL normalizado, sin ejecutar código ni descargar datos."""
+    path=Path(path).expanduser().resolve(strict=True)
+    if path.suffix.lower()!=".jsonl":
+        raise ValueError("Se necesita un archivo JSONL")
+    if not path.is_file() or path.stat().st_size>100*1024*1024:
+        raise ValueError("El archivo debe existir y medir como máximo 100 MB")
+    with path.open("r",encoding="utf-8-sig") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                item=json.loads(line)
+            except json.JSONDecodeError:
+                yield None
+                continue
+            text=item.get("text") if isinstance(item,dict) else None
+            yield text.strip() if isinstance(text,str) and len(text.strip())>=8 else None
+
+
+def _fingerprint(text):
+    return hashlib.sha256(" ".join(text.casefold().split()).encode("utf-8")).hexdigest()
+
+
+def audit_dataset(path):
+    """Métricas locales de calidad; nunca incluye ejemplos ni secretos en el reporte."""
+    stats={"validos":0,"unicos":0,"duplicados":0,"invalidos":0,
+           "caracteres_min":0,"caracteres_max":0,"caracteres_promedio":0}
+    seen=set()
+    total_chars=0
+    for value in _iter_dataset_text(path):
+        if value is None:
+            stats["invalidos"]+=1
+            continue
+        stats["validos"]+=1
+        length=len(value)
+        total_chars+=length
+        if stats["caracteres_min"]==0 or length<stats["caracteres_min"]:
+            stats["caracteres_min"]=length
+        stats["caracteres_max"]=max(stats["caracteres_max"],length)
+        key=_fingerprint(value)
+        if key in seen:
+            stats["duplicados"]+=1
+        else:
+            seen.add(key)
+            stats["unicos"]+=1
+    if stats["validos"]:
+        stats["caracteres_promedio"]=round(total_chars/stats["validos"])
+    return stats
+
+
+def split_dataset(path,percent=10):
+    """Genera dos copias sin duplicados y sin fuga entre entrenamiento y validación.
+
+    Selección reproducible por SHA-256 del texto normalizado. No entrena ni
+    evalúa modelos: prepara datos independientes para una evaluación posterior.
+    """
+    if not isinstance(percent,int) or not 5<=percent<=30:
+        raise ValueError("La validación debe ocupar entre 5% y 30%")
+    rows={}
+    for value in _iter_dataset_text(path):
+        if value is None:
+            raise ValueError("Hay filas inválidas: importa o limpia el dataset primero")
+        rows.setdefault(_fingerprint(value),value)
+    if len(rows)<10:
+        raise ValueError("Se requieren al menos 10 ejemplos únicos para separar validación")
+    ordered=sorted(rows.items())
+    nval=max(1,len(ordered)*percent//100)
+    valid=ordered[:nval]
+    train=ordered[nval:]
+    name=Path(path).stem
+    train_path=unique_file(name+"-entrenamiento")
+    valid_path=unique_file(name+"-validacion")
+    for target,items in ((train_path,train),(valid_path,valid)):
+        with target.open("x",encoding="utf-8") as output:
+            for _,value in items:
+                output.write(json.dumps({"text":value},ensure_ascii=False)+"\n")
+    return train_path,valid_path,len(train),len(valid)
 
 def inspect_safetensors(folder):
     folder=Path(folder).resolve(strict=True)

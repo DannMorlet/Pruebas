@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from urllib.request import urlopen
 
-from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, inspect_safetensors, save_recipe, gpu_summary
+from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, inspect_safetensors, save_recipe, gpu_summary
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -108,7 +108,9 @@ class Fresita(tk.Tk):
             self.field(c,"RUTA ACTUAL",self.dataset_path)
             self.button(c,"Importar JSON / JSONL / CSV / TXT",self.pick_dataset,True)
             self.button(c,"Eliminar duplicados en una copia",self.dedup)
-            self.label(c,"Se guardan copias dentro de Documentos/Fresita Studio/datasets.",10,MUTED)
+            self.button(c,"Auditar calidad del dataset",self.audit)
+            self.button(c,"Separar 90% entrenamiento / 10% validación",self.split)
+            self.label(c,"Se guardan copias en Documentos/Fresita Studio/datasets. La separación no evalúa por sí sola el modelo.",10,MUTED)
         elif name=="Modelos":
             c=self.card()
             self.label(c,"Inspección segura de modelos",16,PINK,True)
@@ -158,6 +160,31 @@ class Fresita(tk.Tk):
             messagebox.showinfo("Limpieza",f"{n} ejemplos únicos\n{result}")
         except (OSError,ValueError) as e:messagebox.showerror("Error",str(e))
 
+
+    def audit(self):
+        try:
+            s=audit_dataset(Path(self.dataset_path.get()))
+            messagebox.showinfo("Auditoría de datos",
+                f"Ejemplos válidos: {s['validos']}\\n"
+                f"Únicos: {s['unicos']}\\n"
+                f"Duplicados: {s['duplicados']}\\n"
+                f"Inválidos: {s['invalidos']}\\n"
+                f"Longitud promedio: {s['caracteres_promedio']} caracteres\\n"
+                "No se han enviado datos a internet.")
+        except (OSError,ValueError,UnicodeError) as e:
+            messagebox.showerror("No se pudo auditar",str(e))
+
+    def split(self):
+        try:
+            train,val,nt,nv=split_dataset(Path(self.dataset_path.get()))
+            self.dataset_path.set(str(train))
+            messagebox.showinfo("Datos separados",
+                f"Entrenamiento: {nt} ejemplos\\n{train}\\n\\n"
+                f"Validación: {nv} ejemplos\\n{val}\\n\\n"
+                "Se seleccionó el archivo de entrenamiento. Guarda el de validación para medir calidad posteriormente.")
+        except (OSError,ValueError,UnicodeError) as e:
+            messagebox.showerror("No se pudo separar",str(e))
+
     def inspect(self):
         filename=filedialog.askdirectory(title="Selecciona carpeta de un modelo")
         if not filename:return
@@ -181,6 +208,9 @@ class Fresita(tk.Tk):
             data=Path(self.dataset_path.get())
             if not (1<=steps<=10000 and 1<=rank<=128 and 1e-7<=lr<=0.01 and data.is_file()):
                 raise ValueError("Revisa pasos (1-10000), rango (1-128), LR y ruta al dataset")
+            stats=audit_dataset(data)
+            if stats["unicos"]<2 or stats["invalidos"]:
+                raise ValueError("El dataset debe tener al menos 2 ejemplos únicos y ninguna fila inválida. Audita y limpia los datos.")
             cfg={"model":self.model.get().strip(),"dataset":str(data.resolve()),
                  "steps":steps,"rank":rank,"lr":lr,"qlora":self.mode.get().startswith("QLoRA"),
                  "output":str(BASE/"experiments"/("job-"+time.strftime("%Y%m%d-%H%M%S")))}

@@ -35,3 +35,46 @@ class FresitaTests(unittest.TestCase):
     def test_receta(self):
         path=core.save_recipe({"modelo":"Qwen/Qwen3-0.6B"})
         self.assertTrue(path.exists())
+
+    def test_auditoria_y_deduplicacion(self):
+        source=core.BASE/"auditoria.jsonl"
+        source.write_text("\\n".join([
+            json.dumps({"text":"Texto de entrenamiento A"}),
+            json.dumps({"text":"  texto   de entrenamiento a "}),
+            json.dumps({"text":"Texto de entrenamiento B"}),
+            "esto no es json",
+            json.dumps({"text":"breve"})]),encoding="utf-8")
+        stats=core.audit_dataset(source)
+        self.assertEqual(stats["validos"],3)
+        self.assertEqual(stats["unicos"],2)
+        self.assertEqual(stats["duplicados"],1)
+        self.assertEqual(stats["invalidos"],2)
+        self.assertGreater(stats["caracteres_promedio"],0)
+
+    def test_split_reproducible_sin_fuga(self):
+        source=core.BASE/"split.jsonl"
+        rows=[{"text":f"Texto de ejemplo número {i:03d} para prueba"} for i in range(20)]
+        rows.append(rows[0])
+        source.write_text("\\n".join(json.dumps(x,ensure_ascii=False) for x in rows),encoding="utf-8")
+        a,b,nt,nv=core.split_dataset(source)
+        self.assertEqual((nt,nv),(18,2))
+        ta={json.loads(x)["text"] for x in a.read_text(encoding="utf-8").splitlines()}
+        va={json.loads(x)["text"] for x in b.read_text(encoding="utf-8").splitlines()}
+        self.assertFalse(ta & va)
+        c,d,_,_=core.split_dataset(source)
+        self.assertEqual(a.read_bytes(),c.read_bytes())
+        self.assertEqual(b.read_bytes(),d.read_bytes())
+        self.assertEqual(len(ta|va),20)
+        self.assertEqual(len(rows),21)
+
+    def test_split_rechaza_filas_invalidas(self):
+        source=core.BASE/"malos.jsonl"
+        source.write_text("no es json\\n",encoding="utf-8")
+        with self.assertRaisesRegex(ValueError,"inválidas"):
+            core.split_dataset(source)
+
+    def test_split_rechaza_pocos_ejemplos(self):
+        source=core.BASE/"cortos.jsonl"
+        source.write_text(json.dumps({"text":"Texto suficientemente largo"}),encoding="utf-8")
+        with self.assertRaisesRegex(ValueError,"al menos 10"):
+            core.split_dataset(source)

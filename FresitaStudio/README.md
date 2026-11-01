@@ -6,6 +6,7 @@ Interfaz en español mexicano, sin dependencias de IA para abrirla.
 ## Capacidades de este MVP
 - Panel oscuro con acento rosa fresa.
 - Importar datos JSON, JSONL, CSV, TXT; limpiar duplicados sin sobrescribir.
+- Auditar ejemplos inválidos/duplicados y separar de forma reproducible 90/10 para futura validación, sin mezclar conjuntos.
 - Inspeccionar cabeceras safetensors sin cargar la GPU.
 - Guardar recetas de proyectos.
 - Lanzar LoRA / QLoRA con PEFT/TRL desde un entorno Python separado y ver logs.
@@ -40,3 +41,6 @@ No se modifica el repo `Manguito` ni otros proyectos.
 Este MVP de GitHub es deliberadamente pequeño y no contiene aún el panel avanzado
 completo v0.3 preparado aparte. Tampoco entrena cuatro estudiantes de 600M,
 ni una red de 1000 agentes; esos son objetivos a desarrollar y validar.
+
+## Auditoría y separación de datasets
+En **Datasets**, selecciona un JSONL normalizado. La auditoría cuenta filas válidas, inválidas y duplicadas, y calcula longitudes sin enviar datos a la red. La separación 90/10 genera archivos independientes y reproducibles (mínimo 10 ejemplos únicos), conservando intacto el original. La GUI selecciona el conjunto de entrenamiento; el de validación queda guardado localmente. **Aún no se calcula una métrica del modelo sobre ese conjunto**. No uses el archivo de validación para entrenar si quieres evaluar generalización.
