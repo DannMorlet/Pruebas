@@ -14,6 +14,7 @@ from urllib.request import urlopen
 
 from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
 from fresita_metrics import list_experiments,read_history,read_summary,compare_summaries
+from fresita_quality import evaluate_predictions, save_quality_report
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -74,7 +75,7 @@ class Fresita(tk.Tk):
         sidebar.pack(side="left",fill="y");sidebar.pack_propagate(False)
         self.label(sidebar,"   🍓 FRESITA",20,PINK,True)
         self.label(sidebar,"      AI TRAINING STUDIO",9,MUTED,True)
-        for name in ("Inicio","Modelos","Datasets","Entrenar","Crear IA","Experimentos","Actividad"):
+        for name in ("Inicio","Modelos","Datasets","Entrenar","Crear IA","Experimentos","Evaluar IA","Actividad"):
             self.button(sidebar,"  "+name,lambda n=name:self.show(n))
         self.label(sidebar,"   Local · Windows x64",9,MUTED)
         main=tk.Frame(self,bg=BG)
@@ -165,6 +166,13 @@ class Fresita(tk.Tk):
             self.metric_canvas.pack(fill="both",expand=True,pady=6)
             self.metric_canvas.bind("<Configure>",lambda _event:self.draw_experiment_chart())
             self.refresh_experiments()
+        elif name=="Evaluar IA":
+            c=self.card()
+            self.label(c,"Calidad de respuestas · Español MX y Python",16,PINK,True)
+            self.label(c,"Importa predicciones JSONL ya generadas. No ejecuta modelos ni código Python.",10,MUTED)
+            self.button(c,"Evaluar predicciones JSONL",self.evaluate_quality,True)
+            self.label(c,"Español: coincidencia normalizada y F1 de tokens. Python: coincidencia y sintaxis; no corrección funcional.",10,MUTED)
+            self.label(c,"Se guardan únicamente métricas agregadas y SHA-256. Límite: 8 MB y 5,000 filas.",10,MUTED)
         elif name=="Actividad":
             c=self.card()
             self.button(c,"Detener entrenamiento",self.stop)
@@ -285,6 +293,25 @@ class Fresita(tk.Tk):
                 canvas.create_oval(x-3,y-3,x+3,y+3,fill=color,outline="")
         canvas.create_text(left,bottom+17,text=str(xmin),fill=MUTED,anchor="w",font=(FONT,9))
         canvas.create_text(right,bottom+17,text=f"Paso {xmax}",fill=MUTED,anchor="e",font=(FONT,9))
+
+    def evaluate_quality(self):
+        filename=filedialog.askopenfilename(title="Predicciones para evaluar",filetypes=[("JSONL","*.jsonl")])
+        if not filename:return
+        try:
+            report=evaluate_predictions(Path(filename))
+            output=save_quality_report(report,BASE)
+            es=report["metricas"]["es_mx"]
+            code=report["metricas"]["codigo_python"]
+            def pct(value):
+                return "N/D" if value is None else f"{value*100:.1f}%"
+            messagebox.showinfo("Evaluación offline terminada",
+                f"Ejemplos: {report['ejemplos_validos']} | Filas inválidas: {report['filas_invalidas']}\n"
+                f"Español MX ({es['ejemplos']}): exactitud {pct(es['exactitud_normalizada'])}, F1 {pct(es['f1_tokens_promedio'])}\n"
+                f"Python ({code['ejemplos']}): exactitud {pct(code['coincidencia_exacta'])}, sintaxis {pct(code['sintaxis_valida'])}\n\n"
+                f"Reporte: {output}\nNo se ejecutó código ni se verificó su corrección funcional.")
+            self.status.set("Evaluación offline terminada: "+str(report["ejemplos_validos"])+" ejemplos")
+        except (OSError,ValueError,UnicodeError) as e:
+            messagebox.showerror("Evaluación fallida",str(e))
 
     def pick_dataset(self):
         filename=filedialog.askopenfilename(filetypes=[("Datos","*.jsonl *.json *.csv *.txt")])
