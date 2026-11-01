@@ -69,3 +69,8 @@ cuando coinciden las huellas SHA-256 del mismo archivo de validación y
 tokenizador, longitud de secuencia y número de ejemplos. Los experimentos
 anteriores sin estos metadatos no se consideran comparables. Los reportes
 contienen huellas y métricas, nunca textos de entrenamiento.
+
+
+## Evaluar respuestas de IA sin ejecutar código
+
+La pestaña **Evaluar IA** recibe un JSONL de predicciones ya generadas y calcula coincidencia exacta normalizada y F1 de tokens para español mexicano, además de coincidencia textual y sintaxis de Python mediante análisis AST. No carga modelos ni ejecuta el código evaluado: **sintaxis válida no implica corrección funcional**. Los reportes incluyen sólo métricas agregadas y SHA-256 del archivo, sin preguntas ni respuestas privadas. Consulta [docs/EVALUACION_CALIDAD.md](docs/EVALUACION_CALIDAD.md) para el formato y las limitaciones.
