@@ -163,6 +163,44 @@ def split_dataset(path,percent=10):
                 output.write(json.dumps({"text":value},ensure_ascii=False)+"\n")
     return train_path,valid_path,len(train),len(valid)
 
+def validate_eval_pair(train_path, validation_path):
+    """Comprueba independencia y calidad de los conjuntos sin exponer textos."""
+    train_path=Path(train_path).expanduser().resolve(strict=True)
+    validation_path=Path(validation_path).expanduser().resolve(strict=True)
+    if train_path==validation_path:
+        raise ValueError("Entrenamiento y validación deben usar archivos distintos")
+    train=set()
+    for value in _iter_dataset_text(train_path):
+        if value is None:
+            raise ValueError("El entrenamiento contiene filas inválidas")
+        train.add(_fingerprint(value))
+    validation=set()
+    for value in _iter_dataset_text(validation_path):
+        if value is None:
+            raise ValueError("La validación contiene filas inválidas")
+        validation.add(_fingerprint(value))
+    if len(train)<2 or not validation:
+        raise ValueError("Se requieren al menos 2 ejemplos únicos de entrenamiento y 1 de validación")
+    if train & validation:
+        raise ValueError("Fuga de datos: hay ejemplos repetidos entre entrenamiento y validación")
+    return {"entrenamiento_unicos":len(train),"validacion_unicos":len(validation)}
+
+
+def evaluation_summary(metrics, validation_count, steps):
+    """Resume métricas del modelo; nunca guarda textos ni muestras privadas."""
+    loss=metrics.get("eval_loss")
+    if isinstance(loss,bool) or not isinstance(loss,(float,int)) or not math.isfinite(loss):
+        loss=None
+    else:
+        loss=float(loss)
+    perplexity=math.exp(loss) if loss is not None and loss<=50 else None
+    return {"eval_loss":loss,"perplejidad":perplexity,
+            "ejemplos_validacion":int(validation_count),
+            "pasos_entrenamiento":int(steps),
+            "evaluacion_valida":loss is not None,
+            "nota":"Métricas sobre datos de validación, no certifican calidad general"}
+
+
 def inspect_safetensors(folder):
     folder=Path(folder).resolve(strict=True)
     files=list(folder.glob("*.safetensors"))

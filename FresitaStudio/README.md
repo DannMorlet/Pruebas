@@ -44,3 +44,16 @@ ni una red de 1000 agentes; esos son objetivos a desarrollar y validar.
 
 ## Auditoría y separación de datasets
 En **Datasets**, selecciona un JSONL normalizado. La auditoría cuenta filas válidas, inválidas y duplicadas, y calcula longitudes sin enviar datos a la red. La separación 90/10 genera archivos independientes y reproducibles (mínimo 10 ejemplos únicos), conservando intacto el original. La GUI selecciona el conjunto de entrenamiento; el de validación queda guardado localmente. **Aún no se calcula una métrica del modelo sobre ese conjunto**. No uses el archivo de validación para entrenar si quieres evaluar generalización.
+
+## Validación real de LoRA/QLoRA (opcional)
+En **Entrenar**, selecciona dos archivos JSONL normalizados distintos: entrenamiento y validación.
+La aplicación comprueba que no haya ejemplos repetidos entre ambos (ignorando mayúsculas y espacios)
+y nunca usa el conjunto de validación para actualizar los pesos. Si se proporciona validación,
+el worker calcula `eval_loss` durante el entrenamiento y una evaluación final. Guarda
+`metricas_validacion.json` junto al adaptador con pérdida, perplejidad, pasos y número de
+muestras, **sin texto privado**. La perplejidad es una medida dependiente del tokenizador,
+no un porcentaje de precisión ni una prueba de calidad universal. Sin archivo de validación,
+se conserva el entrenamiento anterior y no se inventan métricas.
+
+Las pruebas CI validan la lógica de separación y el reporte; no ejecutan PyTorch/CUDA ni
+comprueban la compatibilidad de los modelos en la RTX 5060 física.

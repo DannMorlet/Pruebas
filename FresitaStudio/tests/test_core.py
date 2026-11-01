@@ -78,3 +78,40 @@ class FresitaTests(unittest.TestCase):
         source.write_text(json.dumps({"text":"Texto suficientemente largo"}),encoding="utf-8")
         with self.assertRaisesRegex(ValueError,"al menos 10"):
             core.split_dataset(source)
+
+    def test_validacion_independiente(self):
+        a=core.BASE/"train.jsonl"
+        b=core.BASE/"val.jsonl"
+        a.write_text('{"text":"ejemplo para entrenar A"}\n{"text":"ejemplo para entrenar B"}\n',encoding="utf-8")
+        b.write_text('{"text":"ejemplo de validación C"}\n',encoding="utf-8")
+        self.assertEqual(core.validate_eval_pair(a,b),
+            {"entrenamiento_unicos":2,"validacion_unicos":1})
+
+    def test_validacion_detecta_fuga(self):
+        a=core.BASE/"train.jsonl"
+        b=core.BASE/"val.jsonl"
+        a.write_text('{"text":"ejemplo para entrenar A"}\n{"text":"ejemplo para entrenar B"}\n',encoding="utf-8")
+        b.write_text('{"text":" EJEMPLO  PARA entrenar a "}\n',encoding="utf-8")
+        with self.assertRaisesRegex(ValueError,"Fuga"):
+            core.validate_eval_pair(a,b)
+
+    def test_validacion_rechaza_mismo_archivo(self):
+        a=core.BASE/"datos.jsonl"
+        a.write_text('{"text":"ejemplo largo"}\n',encoding="utf-8")
+        with self.assertRaisesRegex(ValueError,"distintos"):
+            core.validate_eval_pair(a,a)
+
+    def test_resumen_evaluacion_sin_datos_privados(self):
+        import math
+        report=core.evaluation_summary({"eval_loss":math.log(2),"eval_samples":"privado"},4,25)
+        self.assertAlmostEqual(report["perplejidad"],2.0)
+        self.assertEqual(report["ejemplos_validacion"],4)
+        self.assertNotIn("eval_samples",report)
+        self.assertTrue(report["evaluacion_valida"])
+
+    def test_resumen_evaluacion_no_finito(self):
+        report=core.evaluation_summary({"eval_loss":float("nan")},1,5)
+        self.assertIsNone(report["eval_loss"])
+        self.assertIsNone(report["perplejidad"])
+        self.assertFalse(report["evaluacion_valida"])
+        self.assertNotIn("NaN",json.dumps(report,allow_nan=False))

@@ -1,9 +1,14 @@
-"""Entrenamiento PEFT/TRL con CUDA; ejecutar únicamente bajo solicitud del usuario."""
+"""Entrenamiento PEFT/TRL con CUDA y validación opcional independiente."""
 from __future__ import annotations
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
+
+# En desarrollo y en PyInstaller --add-data, fresita_core está en el directorio padre.
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from fresita_core import validate_eval_pair, evaluation_summary
 
 def main():
     parser=argparse.ArgumentParser()
@@ -15,9 +20,18 @@ def main():
     from transformers import AutoTokenizer,AutoModelForCausalLM,BitsAndBytesConfig
     from peft import LoraConfig
     from trl import SFTConfig,SFTTrainer
-    if not torch.cuda.is_available():raise RuntimeError("No se detectó GPU CUDA")
+    if not torch.cuda.is_available():
+        raise RuntimeError("No se detectó GPU CUDA")
     ds=load_dataset("json",data_files=cfg["dataset"],split="train")
-    if "text" not in ds.column_names or len(ds)<2:raise ValueError("Mínimo 2 ejemplos text")
+    if "text" not in ds.column_names or len(ds)<2:
+        raise ValueError("Mínimo 2 ejemplos text")
+    eval_ds=None
+    counts=None
+    if cfg.get("eval_dataset"):
+        counts=validate_eval_pair(cfg["dataset"],cfg["eval_dataset"])
+        eval_ds=load_dataset("json",data_files=cfg["eval_dataset"],split="train")
+        if "text" not in eval_ds.column_names:
+            raise ValueError("Validación sin columna text")
     dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
     kwargs={"dtype":dtype,"trust_remote_code":False}
     if cfg.get("qlora"):
@@ -32,15 +46,32 @@ def main():
     if tok.pad_token is None:tok.pad_token=tok.eos_token
     rank=int(cfg["rank"])
     peft=LoraConfig(r=rank,lora_alpha=rank*2,task_type="CAUSAL_LM",target_modules="all-linear")
-    opts=SFTConfig(output_dir=cfg["output"],max_steps=int(cfg["steps"]),
-       per_device_train_batch_size=1,gradient_accumulation_steps=4,
+    steps=int(cfg["steps"])
+    opts=SFTConfig(output_dir=cfg["output"],max_steps=steps,
+       per_device_train_batch_size=1,per_device_eval_batch_size=1,
+       gradient_accumulation_steps=4,eval_accumulation_steps=1,
        max_length=256,learning_rate=float(cfg["lr"]),dataset_text_field="text",
        gradient_checkpointing=True,logging_steps=5,save_strategy="no",
+       eval_strategy="steps" if eval_ds is not None else "no",
+       eval_steps=max(1,steps//5) if eval_ds is not None else None,
        report_to="none",bf16=dtype==torch.bfloat16,fp16=dtype==torch.float16)
-    trainer=SFTTrainer(model=model,args=opts,train_dataset=ds,processing_class=tok,peft_config=peft)
+    trainer=SFTTrainer(model=model,args=opts,train_dataset=ds,
+        eval_dataset=eval_ds,processing_class=tok,peft_config=peft)
     trainer.train()
     trainer.save_model(cfg["output"])
     tok.save_pretrained(cfg["output"])
+    if eval_ds is not None:
+        metrics=trainer.evaluate()
+        report=evaluation_summary(metrics,counts["validacion_unicos"],steps)
+        target=Path(cfg["output"])/"metricas_validacion.json"
+        tmp=target.with_suffix(".tmp")
+        tmp.write_text(json.dumps(report,ensure_ascii=False,indent=2,allow_nan=False),
+                       encoding="utf-8")
+        os.replace(tmp,target)
+        print("VALIDACIÓN FINAL:",json.dumps(report,ensure_ascii=False),flush=True)
+        print("MÉTRICAS GUARDADAS EN:",target,flush=True)
+        if not report["evaluacion_valida"]:
+            raise RuntimeError("La pérdida de validación no es finita: revisa el entrenamiento")
     print("ENTRENAMIENTO COMPLETADO",flush=True)
 
 if __name__=="__main__":

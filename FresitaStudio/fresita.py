@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from urllib.request import urlopen
 
-from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, inspect_safetensors, save_recipe, gpu_summary
+from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -29,6 +29,7 @@ class Fresita(tk.Tk):
         self.proc=None
         self.logs=[]
         self.dataset_path=tk.StringVar()
+        self.validation_path=tk.StringVar()
         self.model=tk.StringVar(value="Qwen/Qwen3-0.6B")
         self.mode=tk.StringVar(value="LoRA")
         self.steps=tk.StringVar(value="100")
@@ -129,12 +130,15 @@ class Fresita(tk.Tk):
             self.label(c,"MÉTODO",10,MUTED,True)
             ttk.Combobox(c,textvariable=self.mode,values=["LoRA","QLoRA (4-bit)"],state="readonly").pack(fill="x")
             self.field(c,"DATASET JSONL CON COLUMNA TEXT",self.dataset_path)
+            self.field(c,"VALIDACIÓN JSONL (OPCIONAL, NO SE ENTRENA CON ÉL)",self.validation_path)
+            self.button(c,"Seleccionar archivo de validación",self.choose_validation)
             self.field(c,"PASOS",self.steps)
             self.field(c,"RANGO LoRA",self.rank)
             self.field(c,"TASA DE APRENDIZAJE",self.lr)
             self.button(c,"Iniciar entrenamiento real",self.train,True)
             self.button(c,"Detener proceso",self.stop)
-            self.label(c,"Requiere entorno Python con PyTorch CUDA, Transformers, PEFT, TRL, datasets y opcional bitsandbytes.",9,MUTED)
+            self.label(c,"Con validación independiente, se calcula eval_loss y perplejidad al terminar; no se entrena con el archivo de validación.",9,MUTED)
+            self.label(c,"Requiere Python, PyTorch CUDA, Transformers, PEFT, TRL, datasets y opcional bitsandbytes.",9,MUTED)
         elif name=="Actividad":
             c=self.card()
             self.button(c,"Detener entrenamiento",self.stop)
@@ -178,12 +182,17 @@ class Fresita(tk.Tk):
         try:
             train,val,nt,nv=split_dataset(Path(self.dataset_path.get()))
             self.dataset_path.set(str(train))
+            self.validation_path.set(str(val))
             messagebox.showinfo("Datos separados",
                 f"Entrenamiento: {nt} ejemplos\n{train}\n\n"
                 f"Validación: {nv} ejemplos\n{val}\n\n"
                 "Se seleccionó el archivo de entrenamiento. Guarda el de validación para medir calidad posteriormente.")
         except (OSError,ValueError,UnicodeError) as e:
             messagebox.showerror("No se pudo separar",str(e))
+
+    def choose_validation(self):
+        filename=filedialog.askopenfilename(filetypes=[("JSONL","*.jsonl")])
+        if filename:self.validation_path.set(filename)
 
     def inspect(self):
         filename=filedialog.askdirectory(title="Selecciona carpeta de un modelo")
@@ -215,6 +224,11 @@ class Fresita(tk.Tk):
                  "steps":steps,"rank":rank,"lr":lr,"qlora":self.mode.get().startswith("QLoRA"),
                  "output":str(BASE/"experiments"/("job-"+time.strftime("%Y%m%d-%H%M%S")))}
             if not cfg["model"]:raise ValueError("Introduce el modelo base")
+            if self.validation_path.get().strip():
+                val=Path(self.validation_path.get().strip())
+                counts=validate_eval_pair(data,val)
+                cfg["eval_dataset"]=str(val.resolve())
+                cfg["validation_count"]=counts["validacion_unicos"]
             recipe=save_recipe(cfg)
             python=(BASE/".venv"/"Scripts"/"python.exe")
             if not python.exists():raise ValueError("Instala el entorno de entrenamiento .venv con Python x64")
