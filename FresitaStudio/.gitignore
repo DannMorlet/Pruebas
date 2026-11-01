@@ -1,0 +1,25 @@
+# Pesos, entornos y datos privados
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.safetensors
+*.gguf
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.db
+*.sqlite*
+.env
+.env.*
+datasets/
+checkpoints/
+models/
+experiments/output/
+runs/
+logs/
+dist/
+build/
+*.spec
