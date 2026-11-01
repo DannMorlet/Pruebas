@@ -9,6 +9,7 @@ import sys
 # En desarrollo y en PyInstaller --add-data, fresita_core está en el directorio padre.
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fresita_core import validate_eval_pair, evaluation_summary
+from fresita_metrics import append_metrics
 
 def main():
     parser=argparse.ArgumentParser()
@@ -17,7 +18,7 @@ def main():
     cfg=json.loads(Path(args.config).read_text(encoding="utf-8"))
     import torch
     from datasets import load_dataset
-    from transformers import AutoTokenizer,AutoModelForCausalLM,BitsAndBytesConfig
+    from transformers import AutoTokenizer,AutoModelForCausalLM,BitsAndBytesConfig,TrainerCallback
     from peft import LoraConfig
     from trl import SFTConfig,SFTTrainer
     if not torch.cuda.is_available():
@@ -55,8 +56,14 @@ def main():
        eval_strategy="steps" if eval_ds is not None else "no",
        eval_steps=max(1,steps//5) if eval_ds is not None else None,
        report_to="none",bf16=dtype==torch.bfloat16,fp16=dtype==torch.float16)
+    class HistoryCallback(TrainerCallback):
+        def on_log(self, args, state, control, logs=None, **kwargs):
+            append_metrics(Path(cfg["output"])/"metricas_historial.jsonl",
+                           int(state.global_step), logs or {})
+
     trainer=SFTTrainer(model=model,args=opts,train_dataset=ds,
-        eval_dataset=eval_ds,processing_class=tok,peft_config=peft)
+        eval_dataset=eval_ds,processing_class=tok,peft_config=peft,
+        callbacks=[HistoryCallback()])
     trainer.train()
     trainer.save_model(cfg["output"])
     tok.save_pretrained(cfg["output"])

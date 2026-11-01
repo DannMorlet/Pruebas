@@ -57,3 +57,6 @@ se conserva el entrenamiento anterior y no se inventan métricas.
 
 Las pruebas CI validan la lógica de separación y el reporte; no ejecutan PyTorch/CUDA ni
 comprueban la compatibilidad de los modelos en la RTX 5060 física.
+
+## Gráficas de experimentos
+El panel Experimentos dibuja loss y eval_loss por paso desde eventos reales de TRL, sin datos simulados. Lee el historial local sin prompts ni textos privados. Más detalles en docs/EXPERIMENTOS.md.

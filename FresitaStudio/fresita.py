@@ -13,6 +13,7 @@ from tkinter import filedialog, messagebox, ttk
 from urllib.request import urlopen
 
 from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
+from fresita_metrics import list_experiments,read_history,read_summary
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -28,6 +29,8 @@ class Fresita(tk.Tk):
         self.events=queue.Queue()
         self.proc=None
         self.logs=[]
+        self.experiment_items=[]
+        self.selected_history=[]
         self.dataset_path=tk.StringVar()
         self.validation_path=tk.StringVar()
         self.model=tk.StringVar(value="Qwen/Qwen3-0.6B")
@@ -70,7 +73,7 @@ class Fresita(tk.Tk):
         sidebar.pack(side="left",fill="y");sidebar.pack_propagate(False)
         self.label(sidebar,"   🍓 FRESITA",20,PINK,True)
         self.label(sidebar,"      AI TRAINING STUDIO",9,MUTED,True)
-        for name in ("Inicio","Modelos","Datasets","Entrenar","Crear IA","Actividad"):
+        for name in ("Inicio","Modelos","Datasets","Entrenar","Crear IA","Experimentos","Actividad"):
             self.button(sidebar,"  "+name,lambda n=name:self.show(n))
         self.label(sidebar,"   Local · Windows x64",9,MUTED)
         main=tk.Frame(self,bg=BG)
@@ -139,6 +142,23 @@ class Fresita(tk.Tk):
             self.button(c,"Detener proceso",self.stop)
             self.label(c,"Con validación independiente, se calcula eval_loss y perplejidad al terminar; no se entrena con el archivo de validación.",9,MUTED)
             self.label(c,"Requiere Python, PyTorch CUDA, Transformers, PEFT, TRL, datasets y opcional bitsandbytes.",9,MUTED)
+        elif name=="Experimentos":
+            c=self.card()
+            self.label(c,"Pérdida real de entrenamiento y validación",16,PINK,True)
+            self.label(c,"Métricas locales; no se muestran textos de datasets.",10,MUTED)
+            self.button(c,"Actualizar experimentos",self.refresh_experiments,True)
+            self.experiment_list=tk.Listbox(c,height=4,bg="#312A3A",fg=TEXT,
+                    selectbackground=PINK,selectforeground=BG,relief="flat",
+                    font=(FONT,10),exportselection=False)
+            self.experiment_list.pack(fill="x",pady=5)
+            self.experiment_list.bind("<<ListboxSelect>>",lambda _event:self.select_experiment())
+            self.experiment_summary=tk.StringVar(value="Selecciona un experimento.")
+            tk.Label(c,textvariable=self.experiment_summary,bg=PANEL,fg=MUTED,
+                     font=(FONT,10),anchor="w",justify="left").pack(fill="x",pady=5)
+            self.metric_canvas=tk.Canvas(c,bg="#15121E",height=240,highlightthickness=0)
+            self.metric_canvas.pack(fill="both",expand=True,pady=6)
+            self.metric_canvas.bind("<Configure>",lambda _event:self.draw_experiment_chart())
+            self.refresh_experiments()
         elif name=="Actividad":
             c=self.card()
             self.button(c,"Detener entrenamiento",self.stop)
@@ -147,6 +167,81 @@ class Fresita(tk.Tk):
             self.console.pack(fill="both",expand=True)
             self.console.insert("1.0","\n".join(self.logs[-400:]))
             self.console.configure(state="disabled")
+
+    def refresh_experiments(self):
+        try:
+            self.experiment_items=list_experiments(BASE/"experiments")
+            self.experiment_list.delete(0,"end")
+            for folder in self.experiment_items:
+                self.experiment_list.insert("end",folder.name)
+            self.selected_history=[]
+            if self.experiment_items:
+                self.experiment_list.selection_set(0)
+                self.select_experiment()
+            else:
+                self.experiment_summary.set("Todavía no hay entrenamientos con métricas.")
+                self.draw_experiment_chart()
+        except (OSError,ValueError) as e:
+            messagebox.showerror("Experimentos",str(e))
+
+    def select_experiment(self):
+        selection=self.experiment_list.curselection()
+        if not selection:return
+        folder=self.experiment_items[selection[0]]
+        try:
+            self.selected_history=read_history(folder/"metricas_historial.jsonl")
+            report=read_summary(folder)
+            loss=report.get("eval_loss")
+            perplexity=report.get("perplejidad")
+            info=f"{folder.name} | {len(self.selected_history)} eventos"
+            if loss is not None:info+=f" | eval_loss: {loss:.4f}"
+            else:info+=" | Sin evaluación final"
+            if perplexity is not None:info+=f" | Perplejidad: {perplexity:.3f}"
+            self.experiment_summary.set(info)
+            self.draw_experiment_chart()
+        except (OSError,ValueError) as e:
+            self.experiment_summary.set("No se pudo leer: "+str(e))
+            self.selected_history=[]
+            self.draw_experiment_chart()
+
+    def draw_experiment_chart(self):
+        canvas=getattr(self,"metric_canvas",None)
+        if canvas is None or not canvas.winfo_exists():return
+        canvas.delete("all")
+        width=max(canvas.winfo_width(),360);height=max(canvas.winfo_height(),200)
+        left,right,top,bottom=58,width-18,30,height-35
+        canvas.create_line(left,top,left,bottom,fill="#807389")
+        canvas.create_line(left,bottom,right,bottom,fill="#807389")
+        series=[
+            ("loss","#F57CAD",[(x["paso"],x["loss"]) for x in self.selected_history if "loss" in x]),
+            ("eval_loss","#8BD6E3",[(x["paso"],x["eval_loss"]) for x in self.selected_history if "eval_loss" in x])]
+        values=[v for _,_,points in series for _,v in points]
+        steps=[s for _,_,points in series for s,_ in points]
+        if not values:
+            canvas.create_text(width//2,height//2,text="Sin métricas registradas",fill=MUTED,font=(FONT,12))
+            return
+        ymin,ymax=min(values),max(values)
+        if ymin==ymax:ymin-=0.5;ymax+=0.5
+        xmin,xmax=min(steps),max(steps)
+        if xmin==xmax:xmax+=1
+        for i in range(5):
+            y=top+(bottom-top)*i/4
+            v=ymax-(ymax-ymin)*i/4
+            canvas.create_line(left,y,right,y,fill="#332B3B",dash=(2,5))
+            canvas.create_text(left-6,y,text=f"{v:.3g}",fill=MUTED,anchor="e",font=(FONT,9))
+        for label,color,points in series:
+            canvas.create_text(left+(120 if label=="eval_loss" else 5),12,
+                text=label,fill=color,anchor="w",font=(FONT,10,"bold"))
+            coords=[]
+            for step,value in points:
+                coords.extend((left+(right-left)*(step-xmin)/(xmax-xmin),
+                               bottom-(bottom-top)*(value-ymin)/(ymax-ymin)))
+            if len(coords)>=4:canvas.create_line(*coords,fill=color,width=2)
+            elif len(coords)==2:
+                x,y=coords
+                canvas.create_oval(x-3,y-3,x+3,y+3,fill=color,outline="")
+        canvas.create_text(left,bottom+17,text=str(xmin),fill=MUTED,anchor="w",font=(FONT,9))
+        canvas.create_text(right,bottom+17,text=f"Paso {xmax}",fill=MUTED,anchor="e",font=(FONT,9))
 
     def pick_dataset(self):
         filename=filedialog.askopenfilename(filetypes=[("Datos","*.jsonl *.json *.csv *.txt")])
