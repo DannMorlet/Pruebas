@@ -60,3 +60,12 @@ comprueban la compatibilidad de los modelos en la RTX 5060 física.
 
 ## Gráficas de experimentos
 El panel Experimentos dibuja loss y eval_loss por paso desde eventos reales de TRL, sin datos simulados. Lee el historial local sin prompts ni textos privados. Más detalles en docs/EXPERIMENTOS.md.
+
+## Comparar experimentos (nuevo)
+
+En **Experimentos** selecciona dos trabajos y pulsa **Comparar dos experimentos**.
+Fresita compara `eval_loss` y superpone las curvas de validación únicamente
+cuando coinciden las huellas SHA-256 del mismo archivo de validación y
+tokenizador, longitud de secuencia y número de ejemplos. Los experimentos
+anteriores sin estos metadatos no se consideran comparables. Los reportes
+contienen huellas y métricas, nunca textos de entrenamiento.

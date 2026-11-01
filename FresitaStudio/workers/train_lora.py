@@ -9,7 +9,7 @@ import sys
 # En desarrollo y en PyInstaller --add-data, fresita_core está en el directorio padre.
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fresita_core import validate_eval_pair, evaluation_summary
-from fresita_metrics import append_metrics
+from fresita_metrics import append_metrics, evaluation_fingerprints
 
 def main():
     parser=argparse.ArgumentParser()
@@ -70,6 +70,7 @@ def main():
     if eval_ds is not None:
         metrics=trainer.evaluate()
         report=evaluation_summary(metrics,counts["validacion_unicos"],steps)
+        report.update(evaluation_fingerprints(cfg["eval_dataset"],tok,256))
         target=Path(cfg["output"])/"metricas_validacion.json"
         tmp=target.with_suffix(".tmp")
         tmp.write_text(json.dumps(report,ensure_ascii=False,indent=2,allow_nan=False),

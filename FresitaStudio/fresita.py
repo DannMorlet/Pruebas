@@ -13,7 +13,7 @@ from tkinter import filedialog, messagebox, ttk
 from urllib.request import urlopen
 
 from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
-from fresita_metrics import list_experiments,read_history,read_summary
+from fresita_metrics import list_experiments,read_history,read_summary,compare_summaries
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -31,6 +31,7 @@ class Fresita(tk.Tk):
         self.logs=[]
         self.experiment_items=[]
         self.selected_history=[]
+        self.compare_histories=None
         self.dataset_path=tk.StringVar()
         self.validation_path=tk.StringVar()
         self.model=tk.StringVar(value="Qwen/Qwen3-0.6B")
@@ -147,11 +148,16 @@ class Fresita(tk.Tk):
             self.label(c,"Pérdida real de entrenamiento y validación",16,PINK,True)
             self.label(c,"Métricas locales; no se muestran textos de datasets.",10,MUTED)
             self.button(c,"Actualizar experimentos",self.refresh_experiments,True)
-            self.experiment_list=tk.Listbox(c,height=4,bg="#312A3A",fg=TEXT,
+            self.label(c,"Selecciona dos experimentos con clic para comparar; el gráfico individual se mantiene disponible.",9,MUTED)
+            self.experiment_list=tk.Listbox(c,height=4,selectmode="multiple",bg="#312A3A",fg=TEXT,
                     selectbackground=PINK,selectforeground=BG,relief="flat",
                     font=(FONT,10),exportselection=False)
             self.experiment_list.pack(fill="x",pady=5)
             self.experiment_list.bind("<<ListboxSelect>>",lambda _event:self.select_experiment())
+            self.button(c,"Comparar dos experimentos",self.compare_experiments)
+            self.comparison_summary=tk.StringVar(value="Selecciona dos experimentos para comparar eval_loss.")
+            tk.Label(c,textvariable=self.comparison_summary,bg=PANEL,fg="#8BD6E3",
+                     font=(FONT,10),anchor="w",justify="left",wraplength=720).pack(fill="x",pady=5)
             self.experiment_summary=tk.StringVar(value="Selecciona un experimento.")
             tk.Label(c,textvariable=self.experiment_summary,bg=PANEL,fg=MUTED,
                      font=(FONT,10),anchor="w",justify="left").pack(fill="x",pady=5)
@@ -175,6 +181,8 @@ class Fresita(tk.Tk):
             for folder in self.experiment_items:
                 self.experiment_list.insert("end",folder.name)
             self.selected_history=[]
+            self.compare_histories=None
+            self.comparison_summary.set("Selecciona dos experimentos para comparar eval_loss.")
             if self.experiment_items:
                 self.experiment_list.selection_set(0)
                 self.select_experiment()
@@ -187,7 +195,9 @@ class Fresita(tk.Tk):
     def select_experiment(self):
         selection=self.experiment_list.curselection()
         if not selection:return
-        folder=self.experiment_items[selection[0]]
+        self.compare_histories=None
+        self.comparison_summary.set("Selecciona dos experimentos para comparar eval_loss.")
+        folder=self.experiment_items[selection[-1]]
         try:
             self.selected_history=read_history(folder/"metricas_historial.jsonl")
             report=read_summary(folder)
@@ -204,6 +214,34 @@ class Fresita(tk.Tk):
             self.selected_history=[]
             self.draw_experiment_chart()
 
+    def compare_experiments(self):
+        selection=self.experiment_list.curselection()
+        if len(selection)!=2:
+            self.comparison_summary.set("Selecciona exactamente dos experimentos con clic.")
+            return
+        first,second=(self.experiment_items[i] for i in selection)
+        try:
+            result=compare_summaries(read_summary(first),read_summary(second))
+            if not result["comparable"]:
+                self.compare_histories=None
+                self.comparison_summary.set("No comparables: "+result["motivo"]+
+                    ". Los entrenamientos anteriores pueden carecer de huellas; no se inventa un ganador.")
+            else:
+                winner=result["mejor"]
+                who=("Empate" if winner=="empate" else
+                     ("Mejor eval_loss: "+(first.name if winner=="A" else second.name)))
+                self.comparison_summary.set(
+                    f"A: {first.name} ({result['loss_a']:.4f}) | B: {second.name} ({result['loss_b']:.4f})"
+                    f" | Δ(B-A): {result['delta_b_menos_a']:+.4f} | {who}. "
+                    "Mismo dataset y tokenizador; menor pérdida no garantiza mejores respuestas.")
+                self.compare_histories=[
+                    (first.name,read_history(first/"metricas_historial.jsonl")),
+                    (second.name,read_history(second/"metricas_historial.jsonl"))]
+            self.draw_experiment_chart()
+        except (OSError,ValueError) as e:
+            self.compare_histories=None
+            self.comparison_summary.set("Error de comparación: "+str(e))
+
     def draw_experiment_chart(self):
         canvas=getattr(self,"metric_canvas",None)
         if canvas is None or not canvas.winfo_exists():return
@@ -212,9 +250,14 @@ class Fresita(tk.Tk):
         left,right,top,bottom=58,width-18,30,height-35
         canvas.create_line(left,top,left,bottom,fill="#807389")
         canvas.create_line(left,bottom,right,bottom,fill="#807389")
-        series=[
-            ("loss","#F57CAD",[(x["paso"],x["loss"]) for x in self.selected_history if "loss" in x]),
-            ("eval_loss","#8BD6E3",[(x["paso"],x["eval_loss"]) for x in self.selected_history if "eval_loss" in x])]
+        if self.compare_histories is not None:
+            series=[(name[:20]+" eval","#F57CAD" if i==0 else "#8BD6E3",
+                [(x["paso"],x["eval_loss"]) for x in history if "eval_loss" in x])
+                for i,(name,history) in enumerate(self.compare_histories)]
+        else:
+            series=[
+                ("loss","#F57CAD",[(x["paso"],x["loss"]) for x in self.selected_history if "loss" in x]),
+                ("eval_loss","#8BD6E3",[(x["paso"],x["eval_loss"]) for x in self.selected_history if "eval_loss" in x])]
         values=[v for _,_,points in series for _,v in points]
         steps=[s for _,_,points in series for s,_ in points]
         if not values:
@@ -229,8 +272,8 @@ class Fresita(tk.Tk):
             v=ymax-(ymax-ymin)*i/4
             canvas.create_line(left,y,right,y,fill="#332B3B",dash=(2,5))
             canvas.create_text(left-6,y,text=f"{v:.3g}",fill=MUTED,anchor="e",font=(FONT,9))
-        for label,color,points in series:
-            canvas.create_text(left+(120 if label=="eval_loss" else 5),12,
+        for index,(label,color,points) in enumerate(series):
+            canvas.create_text(left+(190*index),12,
                 text=label,fill=color,anchor="w",font=(FONT,10,"bold"))
             coords=[]
             for step,value in points:

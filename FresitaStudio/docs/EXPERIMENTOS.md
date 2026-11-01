@@ -16,3 +16,22 @@ precisión porcentual ni demuestra calidad universal.
 
 CI prueba el filtrado de métricas y empaquetado x64. Falta validar
 entrenamiento CUDA real en la RTX 5060 de 8 GB.
+
+## Comparación de dos experimentos
+
+Selecciona dos entradas en **Experimentos** y pulsa **Comparar dos experimentos**.
+Fresita sólo muestra ganador de `eval_loss` si ambos reportes tienen
+exactamente la misma huella SHA-256 del archivo de validación, la misma
+huella de serialización del tokenizador rápido, igual longitud máxima de
+evaluación y el mismo número de ejemplos. Si falta cualquier metadato
+(como en experimentos anteriores), no declara ganador.
+
+Los entrenamientos futuros guardan únicamente huellas SHA-256 y números;
+no se guardan textos del dataset, rutas privadas ni vocabularios. La
+comparación es orientativa: no mide exactitud en tareas ni calidad de
+respuestas, y distintas versiones del modelo/tokenizador pueden alterar
+los resultados. Si cambia el orden del JSONL, la huella cambia y se
+rechaza la comparación por prudencia.
+
+El gráfico superpone `eval_loss` de ambos experimentos cuando hay
+historial disponible; no fabrica curvas ni reentrena modelos.
