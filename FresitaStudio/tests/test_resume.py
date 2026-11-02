@@ -1,4 +1,5 @@
 """Pruebas CPU de reanudación: nunca cargan modelos ni datos privados."""
+import ast
 import json
 from pathlib import Path
 import sys
@@ -98,6 +99,15 @@ class ResumeTests(unittest.TestCase):
         self.cfg["resume_checkpoint"] = str(checkpoint)
         with self.assertRaisesRegex(ValueError, "manifiesto"):
             prepare_training_run(self.cfg)
+
+    def test_worker_entrega_ruta_explicita_a_trl(self):
+        worker = Path(__file__).resolve().parents[1] / "workers" / "train_lora.py"
+        tree = ast.parse(worker.read_text(encoding="utf-8"))
+        self.assertTrue(any(
+            isinstance(node, ast.Call)
+            and any(keyword.arg == "resume_from_checkpoint" for keyword in node.keywords)
+            for node in ast.walk(tree)
+        ))
 
     def test_rechaza_reanudacion_sin_guardado(self):
         self.cfg["checkpoint_interval"] = 0
