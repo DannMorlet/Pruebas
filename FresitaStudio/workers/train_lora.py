@@ -59,8 +59,8 @@ def main():
     rank=int(cfg["rank"])
     peft=LoraConfig(r=rank,lora_alpha=rank*2,task_type="CAUSAL_LM",target_modules="all-linear")
     steps=int(cfg["steps"])
-    opts=SFTConfig(**sft_training_kwargs({
-       "output_dir":cfg["output"],"max_steps":steps,
+    opts=SFTConfig(**sft_training_kwargs(dict(
+       output_dir=cfg["output"],max_steps=steps,
        per_device_train_batch_size=1,per_device_eval_batch_size=1,
        gradient_accumulation_steps=4,eval_accumulation_steps=1,
        max_length=256,learning_rate=float(cfg["lr"]),dataset_text_field="text",
@@ -68,7 +68,7 @@ def main():
        eval_strategy="steps" if eval_ds is not None else "no",
        eval_steps=max(1,steps//5) if eval_ds is not None else None,
        report_to="none",bf16=dtype==torch.bfloat16,fp16=dtype==torch.float16,
-       },steps,cfg.get("checkpoint_interval",0)))
+       ),steps,cfg.get("checkpoint_interval",0)))
     class HistoryCallback(TrainerCallback):
         def on_log(self, args, state, control, logs=None, **kwargs):
             append_metrics(Path(cfg["output"])/"metricas_historial.jsonl",
