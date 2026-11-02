@@ -102,3 +102,14 @@ class CenterTests(unittest.TestCase):
     def test_configuracion_no_modifica_driver(self):
         self.assertNotIn("pip install nvidia",str(c.update_component))
         self.assertNotIn("nvidia-driver",c.TORCH_PROFILE)
+
+    def test_restaurar_entorno_manual_existente(self):
+        manual=self.root/".venv"/"Scripts"/"python.exe"
+        manual.parent.mkdir(parents=True)
+        manual.write_bytes(b"entorno original")
+        self.add("trl","actualizado")
+        c.activate("trl","actualizado",self.root)
+        self.assertEqual(c.active_tag("trl",self.root),"actualizado")
+        self.assertEqual(c.rollback("trl",self.root),"legacy")
+        self.assertEqual(c.active_python("trl",self.root),manual)
+        self.assertEqual(manual.read_bytes(),b"entorno original")

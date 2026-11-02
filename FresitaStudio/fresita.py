@@ -270,11 +270,11 @@ class Fresita(tk.Tk):
             c=self.card()
             self.label(c,"Centro de actualizaciones automático",16,PINK,True)
             self.label(c,"Busca al abrir y actualiza únicamente entornos compatibles. No toca drivers ni pesos.",10,MUTED)
-            tk.Checkbutton(c,text="Buscar actualizaciones al abrir (activado)",
+            tk.Checkbutton(c,text="Buscar actualizaciones al abrir",
                            variable=self.llama_autocheck,command=self.save_llama_settings,
                            bg=PANEL,fg=TEXT,selectcolor="#312A3A",
                            activebackground=PANEL,activeforeground=TEXT).pack(anchor="w",pady=4)
-            tk.Checkbutton(c,text="Instalar componentes compatibles automáticamente (activado)",
+            tk.Checkbutton(c,text="Instalar componentes compatibles automáticamente",
                            variable=self.auto_install,command=self.save_update_preferences,
                            bg=PANEL,fg=TEXT,selectcolor="#312A3A",
                            activebackground=PANEL,activeforeground=TEXT).pack(anchor="w",pady=4)
@@ -686,7 +686,7 @@ class Fresita(tk.Tk):
         except (OSError,ValueError) as e:messagebox.showerror("Error",str(e))
 
     def setup_training_env(self):
-        if self.setup_busy or self.train_check_busy:
+        if self.setup_busy or self.updates_busy or self.train_check_busy:
             return
         if self.proc and self.proc.poll() is None:
             messagebox.showwarning("Entrenamiento activo",
@@ -743,7 +743,7 @@ class Fresita(tk.Tk):
         threading.Thread(target=work,daemon=True).start()
 
     def setup_unsloth_env(self):
-        if self.setup_busy or self.train_check_busy or self.unsloth_check_busy:
+        if self.setup_busy or self.updates_busy or self.train_check_busy or self.unsloth_check_busy:
             return
         if self.proc and self.proc.poll() is None:
             messagebox.showwarning("Entrenamiento activo",
@@ -871,7 +871,7 @@ class Fresita(tk.Tk):
                     self.status.set("Actualizando componentes compatibles...")
                 if kind=="update_done":
                     self.updates_busy=False
-                    self.updates_info.set("\\n".join(data))
+                    self.updates_info.set("\n".join(data))
                     self.status.set("Revisión de actualizaciones terminada")
                 if kind=="setup_stage":
                     self.status.set("Instalando: "+data)

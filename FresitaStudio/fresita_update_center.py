@@ -86,6 +86,11 @@ def component_dir(component,tag,root=None):
     return managed_root(root)/"motores"/"entornos"/component/tag
 
 def _valid_install(component,tag,root=None):
+    if component in ("trl","unsloth") and tag=="legacy":
+        env=".venv" if component=="trl" else ".venv-unsloth"
+        folder=managed_root(root)/env
+        binary=folder/"Scripts"/"python.exe"
+        return binary.is_file() and not folder.is_symlink() and not binary.is_symlink()
     folder=component_dir(component,tag,root)
     if folder.is_symlink():
         return False
@@ -103,7 +108,7 @@ def active_python(component,root=None):
     if component not in ("trl","unsloth"):
         raise ValueError("Sólo entornos Python")
     tag=active_tag(component,root)
-    if tag:
+    if tag and tag!="legacy":
         env=".venv" if component=="trl" else ".venv-unsloth"
         return component_dir(component,tag,root)/env/"Scripts"/"python.exe"
     # Instalaciones manuales originales conservadas como respaldo.
@@ -127,6 +132,8 @@ def activate(component,tag,root=None):
         raise ValueError("No se activará una instalación incompleta")
     data=_load_registry(root)
     old=data[component]["active"]
+    if old is None and component in ("trl","unsloth") and _valid_install(component,"legacy",root):
+        old="legacy"
     if old != tag:
         data[component]={"active":tag,"previous":old}
         _save_registry(data,root)
