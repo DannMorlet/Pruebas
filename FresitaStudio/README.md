@@ -173,3 +173,22 @@ No se actualiza PyTorch automáticamente ni se presume que LoRA/QLoRA
 funcione hasta probarlos. CUDA Toolkit 13.4.3 es la última edición de NVIDIA,
 pero el runtime distribuido con llama.cpp usa CUDA 13.4.
 Ver [documentación técnica](docs/LLAMA_CUDA.md).
+
+## Búsqueda automática de actualizaciones del motor (2026-11-02)
+
+Fresita comprueba **al abrir** si GitHub publica una build de llama.cpp
+Windows x64 CUDA 13.4 más reciente que la instalada. Es una consulta
+en segundo plano: la GUI abre sin esperar a la red. La casilla
+**«Buscar actualizaciones al abrir Fresita»** permite desactivarla.
+
+Las preferencias se guardan localmente en
+`Documentos/Fresita Studio/config/actualizaciones.json` y no contienen
+datos privados. Si GitHub no responde, no aparece un diálogo invasivo
+ni se cambia el motor instalado. La descarga e instalación **nunca son
+automáticas**: requieren pulsar el botón y confirmar. No se actualizan
+PyTorch, drivers NVIDIA, CUDA Toolkit, Unsloth, TRL ni PEFT.
+
+Si ya tienes la build más reciente, el botón no vuelve a descargarla.
+El gestor mantiene intactas las versiones anteriores. Las pruebas CI
+simulan preferencias y versiones; **no prueban una instalación física
+de CUDA 13.4 en una RTX 5060**.

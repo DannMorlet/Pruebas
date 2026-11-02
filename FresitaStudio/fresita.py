@@ -13,6 +13,7 @@ from tkinter import filedialog, messagebox, ttk
 from urllib.request import urlopen
 
 from fresita_llama import latest_compatible_release, install_release, installed_server, gpu_compatibility, start_server
+from fresita_updates import load_settings, save_settings, update_message
 from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
 from fresita_metrics import list_experiments,read_history,read_summary,compare_summaries
 from fresita_quality import evaluate_predictions, save_quality_report
@@ -55,12 +56,15 @@ class Fresita(tk.Tk):
         self.llama_proc=None
         self.llama_gguf=tk.StringVar()
         self.llama_info=tk.StringVar(value="Motor aún no comprobado")
+        self.llama_autocheck=tk.BooleanVar(value=load_settings()["buscar_al_abrir"])
         self.llama_busy=False
         self.gpu=tk.StringVar(value="GPU: no consultada")
         self.shell()
         self.show("Inicio")
         self.after(150,self.pump)
         self.after(200,self.scan_gpu)
+        if self.llama_autocheck.get():
+            self.after(1200,lambda:self.check_llama(silent=True) if self.llama_autocheck.get() else None)
         self.protocol("WM_DELETE_WINDOW",self.close)
 
     def label(self,parent,value,size=11,color=TEXT,bold=False):
@@ -225,6 +229,10 @@ class Fresita(tk.Tk):
             self.label(c,"La versión reciente de llama.cpp puede ser preliminar. Conservar versiones permite volver atrás.",9,MUTED)
             tk.Label(c,textvariable=self.llama_info,bg=PANEL,fg="#B2E5C1",
                      font=(FONT,10),anchor="w",justify="left",wraplength=720).pack(fill="x",pady=8)
+            tk.Checkbutton(c,text="Buscar actualizaciones al abrir Fresita (sin instalar nada)",
+                           variable=self.llama_autocheck,command=self.save_llama_settings,
+                           bg=PANEL,fg=TEXT,selectcolor="#312A3A",
+                           activebackground=PANEL,activeforeground=TEXT).pack(anchor="w",pady=4)
             self.button(c,"Comprobar versión disponible y driver",self.check_llama)
             self.button(c,"Descargar última compilación NVIDIA CUDA 13.4",self.install_llama,True)
             self.field(c,"MODELO GGUF LOCAL",self.llama_gguf)
@@ -241,7 +249,13 @@ class Fresita(tk.Tk):
             self.console.insert("1.0","\n".join(self.logs[-400:]))
             self.console.configure(state="disabled")
 
-    def check_llama(self):
+    def save_llama_settings(self):
+        try:
+            save_settings(self.llama_autocheck.get())
+        except OSError as exc:
+            messagebox.showerror("Preferencias",f"No se pudo guardar la preferencia: {exc}")
+
+    def check_llama(self, silent=False):
         if self.llama_busy:return
         self.llama_busy=True
         self.llama_info.set("Consultando GitHub y controlador NVIDIA...")
@@ -250,11 +264,11 @@ class Fresita(tk.Tk):
                 release=latest_compatible_release()
                 driver=gpu_compatibility()
                 installed=installed_server()
-                status=(f"Disponible: {release['tag']} · CUDA 13.4 · "
-                        f"Instalada: {installed[1] if installed else 'ninguna'}\\n{driver}")
+                status=(f"{update_message(installed[1] if installed else None, release['tag'])}"
+                        f" · CUDA 13.4\\n{driver}")
                 self.events.put(("llama_info",status))
             except (OSError,ValueError,KeyError) as exc:
-                self.events.put(("llama_error",str(exc)))
+                self.events.put(("llama_check_error" if silent else "llama_error",str(exc)))
         threading.Thread(target=work,daemon=True).start()
 
     def install_llama(self):
@@ -266,6 +280,11 @@ class Fresita(tk.Tk):
         def work():
             try:
                 release=latest_compatible_release()
+                installed=installed_server()
+                if installed and int(installed[1][1:]) >= int(release["tag"][1:]):
+                    self.events.put(("llama_info",update_message(installed[1],release["tag"])+
+                                     " · No se descargó nada."))
+                    return
                 self.events.put(("log",f"Descargando llama.cpp {release['tag']} CUDA 13.4"))
                 target=install_release(release,progress=lambda msg:self.events.put(("log",msg)))
                 self.events.put(("llama_info",f"Instalada {release['tag']}: {target}"))
@@ -636,6 +655,9 @@ class Fresita(tk.Tk):
                 if kind=="llama_info":
                     self.llama_busy=False
                     self.llama_info.set(data)
+                if kind=="llama_check_error":
+                    self.llama_busy=False
+                    self.llama_info.set("Sin conexión o consulta no disponible. Motor local sin cambios.")
                 if kind=="llama_error":
                     self.llama_busy=False
                     self.llama_info.set("Error: "+data)
