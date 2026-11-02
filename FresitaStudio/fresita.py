@@ -17,6 +17,7 @@ from fresita_metrics import list_experiments,read_history,read_summary,compare_s
 from fresita_quality import evaluate_predictions, save_quality_report
 from fresita_predict import generate_predictions, read_cases, local_server
 from fresita_speed import benchmark_local
+from fresita_pid import discover_server_pid
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -179,6 +180,7 @@ class Fresita(tk.Tk):
             self.field(c,"SERVIDOR LOCAL (SÓLO 127.0.0.1)",self.endpoint)
             self.field(c,"MODELO CARGADO EN SERVIDOR LOCAL",self.model)
             self.field(c,"PID DEL SERVIDOR (OPCIONAL; VRAM Y RAM POR PROCESO)",self.server_pid)
+            self.button(c,"Detectar PID del servidor local",self.detect_pid)
             self.field(c,"BENCHMARK JSONL (PREGUNTA, REFERENCIA, CATEGORIA)",self.benchmark_path)
             self.button(c,"Elegir benchmark",self.choose_benchmark)
             self.button(c,"Generar, medir velocidad y evaluar (local)",self.start_benchmark,True)
@@ -312,6 +314,20 @@ class Fresita(tk.Tk):
     def choose_benchmark(self):
         filename=filedialog.askopenfilename(title="Benchmark de preguntas",filetypes=[("JSONL","*.jsonl")])
         if filename:self.benchmark_path.set(filename)
+
+    def detect_pid(self):
+        """Identifica el listener en segundo plano, sin bloquear la interfaz."""
+        endpoint = self.endpoint.get().strip()
+        try:
+            local_server(endpoint)
+        except ValueError as exc:
+            messagebox.showerror("Servidor local", str(exc))
+            return
+        self.status.set("Buscando proceso que escucha en el puerto local...")
+        def worker():
+            pid = discover_server_pid(endpoint)
+            self.events.put(("pid_discovered", (endpoint, pid)))
+        threading.Thread(target=worker, daemon=True).start()
 
     def start_benchmark(self):
         if self.benchmark_running:
@@ -496,6 +512,15 @@ class Fresita(tk.Tk):
             while True:
                 kind,data=self.events.get_nowait()
                 if kind=="gpu":self.gpu.set(data)
+                if kind=="pid_discovered":
+                    endpoint, pid = data
+                    if endpoint != self.endpoint.get().strip():
+                        self.status.set("Cambió el servidor: se descartó el PID anterior.")
+                    elif pid is None:
+                        self.status.set("PID no disponible o ambiguo. Puedes escribirlo manualmente.")
+                    else:
+                        self.server_pid.set(str(pid))
+                        self.status.set(f"PID detectado: {pid}. Verifica que corresponda al servidor de IA.")
                 if kind=="log":
                     self.logs.append(data)
                     if hasattr(self,"console") and self.console.winfo_exists():
