@@ -44,6 +44,7 @@ class Fresita(tk.Tk):
         self.steps=tk.StringVar(value="100")
         self.lr=tk.StringVar(value="0.0001")
         self.rank=tk.StringVar(value="8")
+        self.checkpoints=tk.BooleanVar(value=False)
         self.endpoint=tk.StringVar(value="http://127.0.0.1:1234/v1")
         self.benchmark_path=tk.StringVar()
         self.server_pid=tk.StringVar()
@@ -148,6 +149,10 @@ class Fresita(tk.Tk):
             self.field(c,"PASOS",self.steps)
             self.field(c,"RANGO LoRA",self.rank)
             self.field(c,"TASA DE APRENDIZAJE",self.lr)
+            tk.Checkbutton(c,text="Guardar checkpoints cada 25 pasos (máximo 2)",
+                           variable=self.checkpoints,bg=PANEL,fg=TEXT,
+                           selectcolor="#312A3A",activebackground=PANEL,
+                           activeforeground=TEXT).pack(anchor="w",pady=3)
             self.button(c,"Iniciar entrenamiento real",self.train,True)
             self.button(c,"Detener proceso",self.stop)
             self.label(c,"Con validación independiente, se calcula eval_loss y perplejidad al terminar; no se entrena con el archivo de validación.",9,MUTED)
@@ -479,6 +484,7 @@ class Fresita(tk.Tk):
                 raise ValueError("El dataset debe tener al menos 2 ejemplos únicos y ninguna fila inválida. Audita y limpia los datos.")
             cfg={"model":self.model.get().strip(),"dataset":str(data.resolve()),
                  "steps":steps,"rank":rank,"lr":lr,"qlora":self.mode.get().startswith("QLoRA"),
+                 "checkpoint_interval":min(25,steps) if self.checkpoints.get() else 0,
                  "output":str(BASE/"experiments"/("job-"+time.strftime("%Y%m%d-%H%M%S")))}
             if not cfg["model"]:raise ValueError("Introduce el modelo base")
             if self.validation_path.get().strip():
