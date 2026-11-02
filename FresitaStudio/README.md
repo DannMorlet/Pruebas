@@ -26,7 +26,7 @@ Para habilitar entrenamiento configura Python 3.12 x64 y un venv en
 `%USERPROFILE%\Documents\Fresita Studio\.venv`:
 ```powershell
 py -3.12 -m venv "$HOME\Documents\Fresita Studio\.venv"
-& "$HOME\Documents\Fresita Studio\.venv\Scripts\python.exe" -m pip install torch --index-url https://download.pytorch.org/whl/cu130
+& "$HOME\Documents\Fresita Studio\.venv\Scripts\python.exe" -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cu132
 & "$HOME\Documents\Fresita Studio\.venv\Scripts\python.exe" -m pip install -r requirements-train.txt
 ```
 Este ejemplo de CUDA debe contrastarse con la versión de controlador y wheels disponibles;
@@ -151,3 +151,25 @@ En **Entrenar**, activa el guardado de checkpoints y usa **Seleccionar carpeta c
 Sólo los trabajos nuevos con checkpoints habilitados generan el archivo local `fresita_checkpoint_manifest.json`. **Los checkpoints antiguos sin manifiesto se rechazan**; no se inventa compatibilidad. El manifiesto guarda una huella, no rutas ni textos del dataset. Se valida la identidad declarada del modelo, **no** la revisión remota ni el contenido de sus pesos: para reanudación fiable utiliza una copia local fija o una revisión inmutable. No se verifica aún que TRL/PEFT reanuden correctamente en tu RTX 5060; CI sólo prueba la validación y el empaquetado, no CUDA.
 
 Para usarlo desde la receta JSON, añade `"resume_checkpoint": "C:\\\\ruta\\\\salida\\\\checkpoint-25"` y conserva `output` apuntando a la carpeta `salida`. La reanudación es explícita; si hay cualquier incompatibilidad se detiene con error antes de iniciar el entrenamiento.
+
+## Motor llama.cpp CUDA 13.4 / CUDA Toolkit 13.4.3
+
+En **Motor llama.cpp**, Fresita obtiene desde la API de GitHub la compilación
+**más reciente** de llama.cpp para Windows x64 que incluya los archivos del
+motor y del runtime NVIDIA CUDA 13.4. La descarga ocurre sólo por elección
+explícita; compara tamaño y SHA-256 de ambos ZIP oficiales antes de extraer.
+Conserva versiones anteriores para recuperación, sin instalar drivers ni
+cambiar otras aplicaciones.
+
+La versión más reciente comprobada al preparar la función fue **b12048**
+(pre-release del 2 de noviembre); la última estable **v0.8.0** no publica
+los ZIP CUDA 13.4 necesarios. Para cargar un GGUF, selecciona el archivo
+desde la pestaña y abre `llama-server` en 127.0.0.1:8080.
+
+**Entrenamiento PyTorch != runtime llama.cpp:** PyTorch 2.14.1 publica
+ruedas oficiales `cu132` para Windows/Linux; al comprobar no encontré
+`cu134` oficial. El ejemplo cu130 anterior pasó a cu132.
+No se actualiza PyTorch automáticamente ni se presume que LoRA/QLoRA
+funcione hasta probarlos. CUDA Toolkit 13.4.3 es la última edición de NVIDIA,
+pero el runtime distribuido con llama.cpp usa CUDA 13.4.
+Ver [documentación técnica](docs/LLAMA_CUDA.md).
