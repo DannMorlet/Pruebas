@@ -15,6 +15,7 @@ from urllib.request import urlopen
 from fresita_llama import latest_compatible_release, install_release, installed_server, gpu_compatibility, start_server
 from fresita_updates import load_settings, save_settings, update_message
 from fresita_train_check import check_training_environment, format_preflight_report
+from fresita_train_setup import build_setup_plan, run_setup, SetupCancelled
 from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
 from fresita_metrics import list_experiments,read_history,read_summary,compare_summaries
 from fresita_quality import evaluate_predictions, save_quality_report
@@ -55,6 +56,8 @@ class Fresita(tk.Tk):
         self.benchmark_cancel=threading.Event()
         self.benchmark_running=False
         self.train_check_busy=False
+        self.setup_busy=False
+        self.setup_cancel=threading.Event()
         self.llama_proc=None
         self.llama_gguf=tk.StringVar()
         self.llama_info=tk.StringVar(value="Motor aún no comprobado")
@@ -182,6 +185,9 @@ class Fresita(tk.Tk):
             self.field(c,"REANUDAR DESDE CHECKPOINT (OPCIONAL; DEJAR VACÍO PARA NUEVO)",self.resume_checkpoint)
             self.button(c,"Seleccionar carpeta checkpoint-N",self.choose_checkpoint)
             self.button(c,"Revisar CUDA, PyTorch, TRL y PEFT (sin entrenar)",self.check_training_env)
+            self.button(c,"Preparar entorno de entrenamiento (instalación guiada)",self.setup_training_env)
+            self.button(c,"Cancelar instalación de dependencias",self.cancel_training_setup)
+            self.label(c,"Instala sólo en un .venv NUEVO; no actualiza Python, drivers, ni entornos existentes.",9,MUTED)
             self.button(c,"Iniciar entrenamiento real",self.train,True)
             self.button(c,"Detener proceso",self.stop)
             self.label(c,"Con validación independiente, se calcula eval_loss y perplejidad al terminar; no se entrena con el archivo de validación.",9,MUTED)
@@ -591,8 +597,47 @@ class Fresita(tk.Tk):
             messagebox.showinfo("Proyecto guardado",str(path))
         except (OSError,ValueError) as e:messagebox.showerror("Error",str(e))
 
+    def setup_training_env(self):
+        if self.setup_busy or self.train_check_busy:
+            return
+        if self.proc and self.proc.poll() is None:
+            messagebox.showwarning("Entrenamiento activo",
+                                   "Termina el entrenamiento antes de instalar dependencias.")
+            return
+        try:
+            plan=build_setup_plan(self.mode.get().startswith("QLoRA"))
+        except (OSError,ValueError) as exc:
+            messagebox.showwarning("Preparar entorno",str(exc))
+            return
+        info=("Se instalará Python virtual 3.12 x64, PyTorch 2.14.1 CUDA 13.2, "
+              "Transformers, TRL, PEFT y demás paquetes. " +
+              ("También bitsandbytes para QLoRA. " if plan["qlora"] else "") +
+              "Requiere Python 3.12 instalado, Internet y varios GB de disco. "
+              "No cambia controladores NVIDIA, CUDA Toolkit ni otros entornos. "
+              "Si falla, se intentará borrar únicamente el .venv nuevo. ¿Continuar?")
+        if not messagebox.askyesno("Instalar dependencias",info):
+            return
+        self.setup_busy=True
+        self.setup_cancel.clear()
+        self.status.set("Preparando dependencias; no cierres Fresita durante la instalación...")
+        def work():
+            try:
+                result=run_setup(plan,cancel=self.setup_cancel,
+                    on_stage=lambda stage:self.events.put(("setup_stage",stage)))
+                self.events.put(("setup_done",result))
+            except (OSError,ValueError,RuntimeError,TimeoutError) as exc:
+                self.events.put(("setup_error",str(exc)))
+        threading.Thread(target=work,daemon=True).start()
+
+    def cancel_training_setup(self):
+        if self.setup_busy:
+            self.setup_cancel.set()
+            self.status.set("Cancelando instalación; espera a que termine la etapa actual.")
+        else:
+            self.status.set("No hay instalación activa.")
+
     def check_training_env(self):
-        if self.train_check_busy:
+        if self.train_check_busy or self.setup_busy:
             return
         if self.proc and self.proc.poll() is None:
             messagebox.showwarning("Entrenamiento activo",
@@ -610,6 +655,9 @@ class Fresita(tk.Tk):
         threading.Thread(target=work,daemon=True).start()
 
     def train(self):
+        if self.setup_busy:
+            messagebox.showwarning("Instalación activa","Espera a terminar la instalación.")
+            return
         if self.proc and self.proc.poll() is None:
             messagebox.showwarning("Ocupado","Ya hay un trabajo ejecutándose");return
         try:
@@ -673,6 +721,18 @@ class Fresita(tk.Tk):
             while True:
                 kind,data=self.events.get_nowait()
                 if kind=="gpu":self.gpu.set(data)
+                if kind=="setup_stage":
+                    self.status.set("Instalando: "+data)
+                if kind=="setup_done":
+                    self.setup_busy=False
+                    self.status.set("Entorno creado. Falta validar CUDA en la GPU física.")
+                    messagebox.showinfo("Entorno de entrenamiento",
+                        "Dependencias instaladas en el entorno nuevo. "
+                        "Ahora usa «Revisar CUDA, PyTorch, TRL y PEFT» para comprobarlo.")
+                if kind=="setup_error":
+                    self.setup_busy=False
+                    self.status.set("No se completó la instalación de dependencias.")
+                    messagebox.showerror("Instalación de dependencias",data)
                 if kind=="train_check_result":
                     self.train_check_busy=False
                     self.status.set("Diagnóstico CUDA completado" if data["ok"] else
@@ -764,6 +824,10 @@ class Fresita(tk.Tk):
         self.after(150,self.pump)
 
     def close(self):
+        if self.setup_busy:
+            messagebox.showwarning("Instalación activa",
+                "Cancela la instalación y espera a que termine antes de cerrar Fresita.")
+            return
         self.benchmark_cancel.set()
         self.stop_llama()
         if self.proc and self.proc.poll() is None:

@@ -206,3 +206,28 @@ prepararlo. El resultado es un diagnóstico previo, no una prueba real
 de entrenamiento ni de compatibilidad de bitsandbytes en tu RTX 5060.
 
 Las pruebas de CI usan un proceso simulado y no requieren PyTorch/CUDA.
+
+## Preparación guiada de dependencias (2026-11-02)
+
+En **Entrenar**, pulsa **Preparar entorno de entrenamiento** para instalar
+desde la propia GUI un entorno Python **nuevo**. Requiere el lanzador
+`py -3.12` ya instalado en Windows. Tras confirmar, Fresita crea
+`Documentos/Fresita Studio/.venv`, instala **PyTorch 2.14.1 cu132**
+desde el índice oficial de PyTorch y las dependencias de
+`requirements-train.txt` (TRL, PEFT, Transformers, etc.) desde PyPI.
+Para el modo QLoRA agrega `bitsandbytes`, sin prometer que funcionará
+con todas las combinaciones de GPU y driver.
+
+**No** instala Python 3.12, controladores NVIDIA, CUDA Toolkit ni Unsloth.
+Unsloth sigue siendo un módulo opcional pendiente de una matriz de
+compatibilidad validada para Windows nativo. El gestor rechaza un `.venv`
+existente y nunca lo sobrescribe. Si falla o se cancela una instalación
+recién creada, intenta revertir únicamente esa carpeta, dejando intactos
+datasets, checkpoints y pesos. Si Windows mantiene archivos bloqueados,
+puede quedar una carpeta marcada para revisión manual.
+
+Se ejecuta en segundo plano, con cancelación y mensajes por etapa sin
+mostrar datos privados. Después de instalar, usa el botón de diagnóstico
+para verificar CUDA; **CI no prueba descargas reales ni entrenamiento GPU**.
+PyTorch cu132 y llama.cpp CUDA 13.4 son entornos independientes.
+Referencia oficial: https://pytorch.org/get-started/previous-versions/
