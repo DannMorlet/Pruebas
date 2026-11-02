@@ -120,6 +120,19 @@ con `{"qlora": false}` (o `true` para QLoRA) y ejecuta:
 Este comando no entrena ni carga pesos. Si pasa, aún falta validar un
 entrenamiento pequeño y el consumo real en la RTX 5060 de 8 GB.
 
+## Checkpoints opcionales de entrenamiento (sin reanudación automática)
+En **Entrenar**, activa «Guardar checkpoints cada 25 pasos (máximo 2)» si quieres
+conservar estados intermedios de TRL. La opción está **desactivada por defecto**
+para evitar gasto adicional de disco y RAM/VRAM. En una receta JSON, el campo
+`checkpoint_interval` acepta 0 (desactivado) o un entero entre 1 y `steps`.
+Cuando está activo, TRL guarda periódicamente checkpoints bajo la carpeta de
+salida del experimento y conserva como máximo dos; el entrenamiento también
+guarda el adaptador final. El guardado puede necesitar espacio considerable
+y no se ha validado aún con CUDA física ni con todas las versiones de TRL.
+**Todavía no se implementa reanudación desde checkpoint**: no selecciones
+manualmente un checkpoint para otro modelo/receta sin validar compatibilidad.
+No se modifica el modelo base ni se suben pesos a GitHub.
+
 ## Diagnóstico de errores de memoria durante LoRA/QLoRA
 Si la carga del modelo, preparación, entrenamiento o evaluación fallan por un error
 reconocible de **VRAM CUDA**, Fresita emite una línea `FRESITA_DIAGNOSTICO`
