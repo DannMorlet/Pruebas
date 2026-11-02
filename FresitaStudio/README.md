@@ -129,8 +129,9 @@ Cuando está activo, TRL guarda periódicamente checkpoints bajo la carpeta de
 salida del experimento y conserva como máximo dos; el entrenamiento también
 guarda el adaptador final. El guardado puede necesitar espacio considerable
 y no se ha validado aún con CUDA física ni con todas las versiones de TRL.
-**Todavía no se implementa reanudación desde checkpoint**: no selecciones
-manualmente un checkpoint para otro modelo/receta sin validar compatibilidad.
+La reanudación **explícita** está disponible desde «Seleccionar carpeta checkpoint-N»;
+requiere un manifiesto creado por Fresita y validaciones previas. No se ha probado
+todavía la recuperación real del estado del optimizador en una RTX 5060.
 No se modifica el modelo base ni se suben pesos a GitHub.
 
 ## Diagnóstico de errores de memoria durante LoRA/QLoRA
@@ -145,7 +146,7 @@ Una prueba CI con errores simulados no valida la recuperación física de CUDA.
 
 
 ## Reanudar desde un checkpoint (experimental, requiere GPU física)
-En **Entrenar**, activa el guardado de checkpoints y usa **Seleccionar carpeta checkpoint-N** para reanudar un trabajo interrumpido. Mantén **idénticos** el modelo, LoRA/QLoRA, rango, tasa de aprendizaje, pasos, intervalo de guardado y archivos de entrenamiento/validación. Fresita valida la huella SHA-256 de la receta y el contenido de ambos datasets antes de iniciar la carga del modelo, y comprueba que el checkpoint seleccionado pertenezca a la carpeta de salida, tenga un número de paso coherente y contenga el estado de Trainer, optimizador, scheduler y RNG. No busca checkpoints automáticamente ni sobrescribe una carpeta existente al iniciar un trabajo nuevo con guardado.
+En **Entrenar**, activa el guardado de checkpoints y usa **Seleccionar carpeta checkpoint-N** para reanudar un trabajo interrumpido. Mantén **idénticos** el modelo, LoRA/QLoRA, rango, tasa de aprendizaje, pasos, intervalo de guardado y archivos de entrenamiento/validación. Fresita valida la huella SHA-256 de la receta y el contenido de ambos datasets antes de iniciar la carga del modelo, y comprueba que el checkpoint seleccionado pertenezca a la carpeta de salida, tenga un número de paso coherente y contenga el estado de Trainer, optimizador, scheduler y RNG. También exige `adapter_config.json` con tipo LoRA y rango compatible, además de `adapter_model.safetensors` no vacío. Rechaza enlaces simbólicos en estos archivos. Esto comprueba la presencia y coherencia mínima, **no** la integridad criptográfica de los pesos ni la seguridad de cargar archivos PyTorch de origen desconocido. No busca checkpoints automáticamente ni sobrescribe una carpeta existente al iniciar un trabajo nuevo con guardado.
 
 Sólo los trabajos nuevos con checkpoints habilitados generan el archivo local `fresita_checkpoint_manifest.json`. **Los checkpoints antiguos sin manifiesto se rechazan**; no se inventa compatibilidad. El manifiesto guarda una huella, no rutas ni textos del dataset. Se valida la identidad declarada del modelo, **no** la revisión remota ni el contenido de sus pesos: para reanudación fiable utiliza una copia local fija o una revisión inmutable. No se verifica aún que TRL/PEFT reanuden correctamente en tu RTX 5060; CI sólo prueba la validación y el empaquetado, no CUDA.
 
