@@ -59,3 +59,20 @@ no cero. El muestreo termina con el benchmark, no lee contenidos de memoria,
 no instala controladores y no requiere paquetes adicionales. Las pruebas CI
 comprueban la API sobre el propio proceso de pruebas de Windows; todavía
 falta contrastar el valor con el servidor real y la RTX 5060.
+
+
+## Detectar el PID automáticamente (Windows 11)
+
+En **Evaluar IA**, pulsa **Detectar PID del servidor local**. Fresita consulta
+`netstat -ano -p tcp` en segundo plano y busca exclusivamente un proceso en
+estado de escucha (`LISTENING` o `ESCUCHANDO`) sobre el puerto exacto de
+`http://127.0.0.1:PUERTO/v1`. Sólo considera direcciones locales IPv4
+`127.0.0.1` y `0.0.0.0`; si hay varios PIDs diferentes, un error o ningún
+listener, indica **N/D** y deja el PID manual sin cambios. No mata ni inicia
+procesos, no consulta redes externas y no atribuye la memoria al modelo.
+
+**Limitación:** el PID del listener puede ser el de un proxy o servidor
+intermediario, no el del proceso que aloja los pesos de la IA. Verifica el PID
+antes de confiar en RAM/VRAM por proceso; Windows WDDM puede seguir mostrando
+N/D. Esta detección tiene pruebas de parsing en CI, pero aún falta comprobar
+su comportamiento con un servidor real y la RTX 5060.
