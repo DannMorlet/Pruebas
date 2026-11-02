@@ -508,6 +508,11 @@ class Fresita(tk.Tk):
                 if kind=="benchmark_done":
                     self.benchmark_running=False
                     self.status.set(f"Evaluación local terminada: {data[2]} ejemplos")
+                    pid_line = (
+                        f"VRAM del proceso PID {data[4]['gpu_proceso_pid']}: "
+                        f"pico {data[4]['gpu_proceso_pico_mib'] if data[4]['gpu_proceso_pico_mib'] is not None else 'N/D'} MiB\\n"
+                        if data[4].get("gpu_proceso_pid") is not None else
+                        "Sin PID: no se midió VRAM por proceso.\\n")
                     messagebox.showinfo("Benchmark terminado",
                         f"Predicciones privadas: {data[0]}\nReporte de calidad: {data[1]}\n"
                         f"Reporte de velocidad: {data[3]}\n"
@@ -517,11 +522,8 @@ class Fresita(tk.Tk):
                         f" | pico {data[4]['gpu_global_pico_mib'] if data[4]['gpu_global_pico_mib'] is not None else 'N/D'} MiB\n"
                         f"RAM global: base {data[4]['ram_global_base_mib'] if data[4]['ram_global_base_mib'] is not None else 'N/D'} MiB"
                         f" | pico {data[4]['ram_global_pico_mib'] if data[4]['ram_global_pico_mib'] is not None else 'N/D'} MiB\n"
-                        f"VRAM del proceso PID {data[4].get('gpu_proceso_pid')}: "
-                        f"pico {data[4].get('gpu_proceso_pico_mib') if data[4].get('gpu_proceso_pico_mib') is not None else 'N/D'} MiB\n"
-                        if data[4].get("gpu_proceso_pid") is not None else
-                        "Sin PID: no se midió VRAM por proceso.\n"
-                        "La VRAM por PID no es memoria exclusiva del modelo.\n"
+                        + pid_line
+                        + "La VRAM por PID no es memoria exclusiva del modelo.\n"
                         "No se envió la referencia al modelo.")
                 if kind=="benchmark_error":
                     self.benchmark_running=False
