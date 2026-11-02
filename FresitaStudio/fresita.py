@@ -16,6 +16,7 @@ from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, au
 from fresita_metrics import list_experiments,read_history,read_summary,compare_summaries
 from fresita_quality import evaluate_predictions, save_quality_report
 from fresita_predict import generate_predictions, read_cases, local_server
+from fresita_speed import benchmark_local
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -178,8 +179,9 @@ class Fresita(tk.Tk):
             self.field(c,"MODELO CARGADO EN SERVIDOR LOCAL",self.model)
             self.field(c,"BENCHMARK JSONL (PREGUNTA, REFERENCIA, CATEGORIA)",self.benchmark_path)
             self.button(c,"Elegir benchmark",self.choose_benchmark)
-            self.button(c,"Generar predicciones y evaluar (local)",self.start_benchmark,True)
+            self.button(c,"Generar, medir velocidad y evaluar (local)",self.start_benchmark,True)
             self.button(c,"Cancelar generación",self.cancel_benchmark)
+            self.label(c,"Mide latencia media, p95 y tokens/s sólo si el servidor reporta usage. No mide VRAM.",9,MUTED)
             self.label(c,"Se envía únicamente la pregunta a 127.0.0.1. El JSONL de salida contiene respuestas y referencias privadas; no lo subas a GitHub.",9,MUTED)
             self.button(c,"Evaluar predicciones JSONL",self.evaluate_quality,True)
             self.label(c,"Español: coincidencia normalizada y F1 de tokens. Python: coincidencia y sintaxis; no corrección funcional.",10,MUTED)
@@ -336,13 +338,13 @@ class Fresita(tk.Tk):
 
     def run_benchmark(self,dataset,endpoint,model):
         try:
-            out,info=generate_predictions(dataset,BASE/"experiments"/"predicciones",
-                endpoint=endpoint,model=model,
+            out,speed_path,speed=benchmark_local(dataset,BASE/"experiments"/"predicciones",
+                workspace=BASE,endpoint=endpoint,model=model,
                 cancelled=self.benchmark_cancel.is_set,
                 progress=lambda i,n:self.events.put(("benchmark_progress",(i,n))))
             report=evaluate_predictions(out)
             saved=save_quality_report(report,BASE)
-            self.events.put(("benchmark_done",(str(out),str(saved),info["ejemplos"])))
+            self.events.put(("benchmark_done",(str(out),str(saved),speed["muestras"],str(speed_path),speed)))
         except Exception as e:
             self.events.put(("benchmark_error",str(e)))
 
@@ -498,7 +500,10 @@ class Fresita(tk.Tk):
                     self.benchmark_running=False
                     self.status.set(f"Evaluación local terminada: {data[2]} ejemplos")
                     messagebox.showinfo("Benchmark terminado",
-                        f"Predicciones privadas: {data[0]}\\nReporte agregado: {data[1]}\\n"
+                        f"Predicciones privadas: {data[0]}\nReporte de calidad: {data[1]}\n"
+                        f"Reporte de velocidad: {data[3]}\n"
+                        f"Latencia media: {data[4]['latencia_media_s']:.3f} s\n"
+                        f"Tokens/s extremo a extremo: {data[4]['tokens_salida_por_s_extremo_a_extremo'] if data[4]['tokens_salida_por_s_extremo_a_extremo'] is not None else 'N/D (sin usage)'}\n"
                         "No se envió la referencia al modelo.")
                 if kind=="benchmark_error":
                     self.benchmark_running=False
