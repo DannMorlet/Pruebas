@@ -142,3 +142,11 @@ modifica automáticamente la receta, la longitud de contexto o los pesos.
 El diagnóstico no incluye rutas ni textos privados; el traceback estándar del
 worker sigue disponible para depuración **sólo en el equipo local**.
 Una prueba CI con errores simulados no valida la recuperación física de CUDA.
+
+
+## Reanudar desde un checkpoint (experimental, requiere GPU física)
+En **Entrenar**, activa el guardado de checkpoints y usa **Seleccionar carpeta checkpoint-N** para reanudar un trabajo interrumpido. Mantén **idénticos** el modelo, LoRA/QLoRA, rango, tasa de aprendizaje, pasos, intervalo de guardado y archivos de entrenamiento/validación. Fresita valida la huella SHA-256 de la receta y el contenido de ambos datasets antes de iniciar la carga del modelo, y comprueba que el checkpoint seleccionado pertenezca a la carpeta de salida, tenga un número de paso coherente y contenga el estado de Trainer, optimizador, scheduler y RNG. No busca checkpoints automáticamente ni sobrescribe una carpeta existente al iniciar un trabajo nuevo con guardado.
+
+Sólo los trabajos nuevos con checkpoints habilitados generan el archivo local `fresita_checkpoint_manifest.json`. **Los checkpoints antiguos sin manifiesto se rechazan**; no se inventa compatibilidad. El manifiesto guarda una huella, no rutas ni textos del dataset. Se valida la identidad declarada del modelo, **no** la revisión remota ni el contenido de sus pesos: para reanudación fiable utiliza una copia local fija o una revisión inmutable. No se verifica aún que TRL/PEFT reanuden correctamente en tu RTX 5060; CI sólo prueba la validación y el empaquetado, no CUDA.
+
+Para usarlo desde la receta JSON, añade `"resume_checkpoint": "C:\\\\ruta\\\\salida\\\\checkpoint-25"` y conserva `output` apuntando a la carpeta `salida`. La reanudación es explícita; si hay cualquier incompatibilidad se detiene con error antes de iniciar el entrenamiento.
