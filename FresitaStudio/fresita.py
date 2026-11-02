@@ -18,7 +18,7 @@ from fresita_quality import evaluate_predictions, save_quality_report
 from fresita_predict import generate_predictions, read_cases, local_server
 from fresita_speed import benchmark_local
 from fresita_pid import discover_server_pid
-from fresita_process_tree import discover_possible_children
+from fresita_process_tree import discover_possible_children, candidate_ram_snapshot
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -328,7 +328,9 @@ class Fresita(tk.Tk):
         def worker():
             pid = discover_server_pid(endpoint)
             children = discover_possible_children(pid) if pid is not None else None
-            self.events.put(("pid_discovered", (endpoint, pid, children)))
+            ram = (candidate_ram_snapshot([pid, *children])
+                   if pid is not None and children is not None else None)
+            self.events.put(("pid_discovered", (endpoint, pid, children, ram)))
         threading.Thread(target=worker, daemon=True).start()
 
     def start_benchmark(self):
@@ -515,7 +517,7 @@ class Fresita(tk.Tk):
                 kind,data=self.events.get_nowait()
                 if kind=="gpu":self.gpu.set(data)
                 if kind=="pid_discovered":
-                    endpoint, pid, children = data
+                    endpoint, pid, children, ram = data
                     if endpoint != self.endpoint.get().strip():
                         self.status.set("Cambió el servidor: se descartó el PID anterior.")
                     elif pid is None:
@@ -525,7 +527,13 @@ class Fresita(tk.Tk):
                         info = (" Posibles secundarios: " + ", ".join(map(str, children))
                                 if children else (" No se observaron hijos." if children == []
                                                   else " Hijos: N/D."))
-                        self.status.set(f"Listener PID {pid}." + info + " No se atribuye RAM/VRAM a los hijos.")
+                        if ram:
+                            preview = ", ".join(
+                                f"{process}: {mib if mib is not None else 'N/D'} MiB"
+                                for process, mib in ram[:4])
+                            extra = f" (+{len(ram)-4} más)" if len(ram) > 4 else ""
+                            info += " RAM observada por PID: " + preview + extra + "."
+                        self.status.set(f"Listener PID {pid}." + info + " Sin atribución al modelo.")
                 if kind=="log":
                     self.logs.append(data)
                     if hasattr(self,"console") and self.console.winfo_exists():

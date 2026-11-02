@@ -43,6 +43,28 @@ def possible_descendants(pairs, root_pid: int, *, max_depth: int = 3, limit: int
     return found
 
 
+def candidate_ram_snapshot(pids, *, probe=None) -> list[tuple[int, int | None]]:
+    """RAM residente por PID observado; no atribuye memoria al modelo.
+
+    No suma procesos; N/D si Windows deniega la consulta.
+    """
+    if (not isinstance(pids, (list, tuple)) or len(pids) > 33
+            or any(type(pid) is not int or not 1 <= pid <= 4294967295 for pid in pids)
+            or len(set(pids)) != len(pids)):
+        raise ValueError("Lista de PIDs inválida o duplicada")
+    if probe is None:
+        from fresita_resources import probe_process_ram
+        probe = probe_process_ram
+    result = []
+    for pid in pids:
+        try:
+            mib = probe(pid)
+        except (OSError, ValueError):
+            mib = None
+        result.append((pid, mib if type(mib) is int and mib >= 0 else None))
+    return result
+
+
 def windows_process_pairs() -> list[tuple[int, int]] | None:
     """Snapshot Toolhelp de PID/PPID solamente; N/D si Windows no permite leer."""
     if os.name != "nt":

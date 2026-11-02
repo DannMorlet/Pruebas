@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fresita_process_tree import possible_descendants, discover_possible_children, windows_process_pairs
+from fresita_process_tree import possible_descendants, discover_possible_children, windows_process_pairs, candidate_ram_snapshot
 
 
 class ProcessTreeTests(unittest.TestCase):
@@ -43,6 +43,35 @@ class ProcessTreeTests(unittest.TestCase):
             snapshot=lambda: [(8, 7), (9, 8)]), [8, 9])
         self.assertIsNone(discover_possible_children(7, windows=True,
             snapshot=lambda: None))
+
+    def test_ram_candidatos_separados_sin_suma(self):
+        rows = candidate_ram_snapshot([10, 20, 30], probe=lambda pid: {10: 120, 20: 400, 30: 0}[pid])
+        self.assertEqual(rows, [(10, 120), (20, 400), (30, 0)])
+
+    def test_ram_denegada_no_se_inventa(self):
+        def denied(_pid):
+            raise PermissionError("Acceso denegado")
+        self.assertEqual(candidate_ram_snapshot([10], probe=denied), [(10, None)])
+
+    def test_ram_invalida_no_se_presenta(self):
+        for invalid in (True, -1, 2.5, "500", float("nan")):
+            self.assertEqual(candidate_ram_snapshot([10], probe=lambda _pid: invalid), [(10, None)])
+
+    def test_pids_invalidos_y_duplicados(self):
+        for bad in ([0], [True], [10, 10], [4294967296], ["10"], list(range(1, 35))):
+            with self.assertRaises(ValueError):
+                candidate_ram_snapshot(bad, probe=lambda _pid: 1)
+
+    def test_lista_vacia(self):
+        self.assertEqual(candidate_ram_snapshot([], probe=lambda _pid: 100), [])
+
+    def test_ram_consulta_solo_pids_solicitados(self):
+        seen = []
+        def probe(pid):
+            seen.append(pid)
+            return 5
+        self.assertEqual(candidate_ram_snapshot([3, 9], probe=probe), [(3, 5), (9, 5)])
+        self.assertEqual(seen, [3, 9])
 
     @unittest.skipUnless(os.name == "nt", "Toolhelp requiere Windows")
     def test_snapshot_real_solo_lectura(self):

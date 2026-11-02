@@ -98,3 +98,16 @@ Las pruebas unitarias cubren jerarquías, ciclos, duplicados, profundidad y
 límites; en CI Windows se consulta una instantánea real y se comprueba que
 incluya el propio proceso de pruebas. Sigue pendiente contrastar el árbol
 con un servidor real y RTX 5060 física.
+
+
+## Instantánea de RAM por PID de posibles secundarios
+
+Al pulsar **Detectar PID y posibles procesos secundarios**, Fresita consulta una
+vez el working set del listener y hasta 32 candidatos descendientes. La barra
+de estado muestra valores individuales o **N/D** si Windows deniega el acceso.
+No suma memoria ni afirma qué proceso aloja la IA. El PID puede reutilizarse,
+el parentesco puede cambiar y el working set incluye páginas compartidas.
+No hay muestreo continuo ni acceso a pesos o datasets.
+
+CI verifica la lógica con mediciones simuladas; falta validación con servidor
+real en Windows 11 y RTX 5060.
