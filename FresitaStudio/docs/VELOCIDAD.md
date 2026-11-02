@@ -76,3 +76,25 @@ intermediario, no el del proceso que aloja los pesos de la IA. Verifica el PID
 antes de confiar en RAM/VRAM por proceso; Windows WDDM puede seguir mostrando
 N/D. Esta detección tiene pruebas de parsing en CI, pero aún falta comprobar
 su comportamiento con un servidor real y la RTX 5060.
+
+
+## Posibles procesos secundarios (informativo, Windows)
+
+Al pulsar **Detectar PID y posibles procesos secundarios**, Fresita identifica el
+PID del listener local y obtiene una instantánea de los pares PID/PPID mediante
+la API de Windows Toolhelp. Muestra hasta 32 **posibles descendientes** en tres
+niveles. No ejecuta comandos de esos procesos ni lee argumentos, rutas, pesos,
+datasets o memoria. No requiere paquetes adicionales.
+
+**Importante:** la relación padre-hijo no demuestra que un proceso cargue la
+IA. Un PID puede reutilizarse, el árbol puede cambiar después de la instantánea
+y un motor puede no ser descendiente del servidor HTTP. Los secundarios
+**no se suman** a las mediciones de RAM/VRAM por PID. El PID que se registra en
+el benchmark sigue siendo el listener seleccionado. Si la instantánea falla
+o excede los límites, se muestra N/D en vez de una lista parcial. La
+detección se ejecuta en segundo plano, sin sondeo permanente.
+
+Las pruebas unitarias cubren jerarquías, ciclos, duplicados, profundidad y
+límites; en CI Windows se consulta una instantánea real y se comprueba que
+incluya el propio proceso de pruebas. Sigue pendiente contrastar el árbol
+con un servidor real y RTX 5060 física.
