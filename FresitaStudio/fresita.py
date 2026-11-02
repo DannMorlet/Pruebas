@@ -331,8 +331,8 @@ class Fresita(tk.Tk):
                 raise ValueError("PID inválido: usa un entero positivo de Windows.")
             process_pid=int(pid_text) if pid_text else None
             if not messagebox.askyesno("Inferencia local",
-                f"Se enviarán {len(cases)} preguntas a {endpoint}.\\n"
-                "Sólo se enviarán las preguntas, no las referencias.\\n"
+                f"Se enviarán {len(cases)} preguntas a {endpoint}.\n"
+                "Sólo se enviarán las preguntas, no las referencias.\n"
                 "Los resultados privados quedarán en tu equipo. "
                 + (f"Se medirá VRAM del PID {process_pid} si está disponible. " if process_pid else "")
                 + "¿Continuar?"):
@@ -510,9 +510,9 @@ class Fresita(tk.Tk):
                     self.status.set(f"Evaluación local terminada: {data[2]} ejemplos")
                     pid_line = (
                         f"VRAM del proceso PID {data[4]['gpu_proceso_pid']}: "
-                        f"pico {data[4]['gpu_proceso_pico_mib'] if data[4]['gpu_proceso_pico_mib'] is not None else 'N/D'} MiB\\n"
+                        f"pico {data[4]['gpu_proceso_pico_mib'] if data[4]['gpu_proceso_pico_mib'] is not None else 'N/D'} MiB\n"
                         if data[4].get("gpu_proceso_pid") is not None else
-                        "Sin PID: no se midió VRAM por proceso.\\n")
+                        "Sin PID: no se midió VRAM por proceso.\n")
                     messagebox.showinfo("Benchmark terminado",
                         f"Predicciones privadas: {data[0]}\nReporte de calidad: {data[1]}\n"
                         f"Reporte de velocidad: {data[3]}\n"
