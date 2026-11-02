@@ -81,3 +81,12 @@ En **Evaluar IA**, Fresita ahora permite generar respuestas con un servidor Open
 
 ## Medición de recursos durante inferencia (2026-11-01)
 En **Evaluar IA**, el benchmark local registra línea base y pico observado de VRAM global de GPU 0 (nvidia-smi) y RAM global de Windows, sin sondeo permanente. No mide el consumo exclusivo del modelo ni garantiza capturar picos breves. Cuando falta una fuente, muestra N/D. El reporte numérico no contiene preguntas ni respuestas. Véase [docs/VELOCIDAD.md](docs/VELOCIDAD.md).
+
+
+## VRAM por PID (experimental)
+La pestaña **Evaluar IA** admite el PID opcional del proceso que ejecuta el
+servidor local. Muestra la VRAM de ese proceso en GPU 0 sólo cuando
+`nvidia-smi` devuelve una fila numérica inequívoca; de lo contrario N/D,
+especialmente bajo WDDM. No es VRAM exclusiva del modelo. Consulta
+[docs/VELOCIDAD.md](docs/VELOCIDAD.md). CI valida parsing, muestreo y
+privacidad con datos falsos, no el hardware real.
