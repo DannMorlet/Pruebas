@@ -44,7 +44,7 @@ class ResumeTests(unittest.TestCase):
         prepare_training_run(self.cfg)
         checkpoint = self.checkpoint()
         self.cfg["resume_checkpoint"] = str(checkpoint)
-        self.assertEqual(prepare_training_run(self.cfg), checkpoint)
+        self.assertEqual(prepare_training_run(self.cfg), checkpoint.resolve())
 
     def test_rechaza_dataset_modificado(self):
         prepare_training_run(self.cfg)
