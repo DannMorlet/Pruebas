@@ -15,6 +15,7 @@ from urllib.request import urlopen
 from fresita_llama import latest_compatible_release, install_release, installed_server, gpu_compatibility, start_server
 from fresita_updates import load_settings, save_settings, update_message
 from fresita_train_check import check_training_environment, format_preflight_report
+from fresita_unsloth import check_unsloth, format_unsloth_report
 from fresita_train_setup import build_setup_plan, run_setup, SetupCancelled
 from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
 from fresita_metrics import list_experiments,read_history,read_summary,compare_summaries
@@ -56,6 +57,7 @@ class Fresita(tk.Tk):
         self.benchmark_cancel=threading.Event()
         self.benchmark_running=False
         self.train_check_busy=False
+        self.unsloth_check_busy=False
         self.setup_busy=False
         self.setup_cancel=threading.Event()
         self.llama_proc=None
@@ -185,6 +187,8 @@ class Fresita(tk.Tk):
             self.field(c,"REANUDAR DESDE CHECKPOINT (OPCIONAL; DEJAR VACÍO PARA NUEVO)",self.resume_checkpoint)
             self.button(c,"Seleccionar carpeta checkpoint-N",self.choose_checkpoint)
             self.button(c,"Revisar CUDA, PyTorch, TRL y PEFT (sin entrenar)",self.check_training_env)
+            self.button(c,"Comprobar Unsloth opcional (sin instalar)",self.check_unsloth_env)
+            self.label(c,"Unsloth se inspecciona por separado; el entrenamiento actual usa TRL/PEFT.",9,MUTED)
             self.button(c,"Preparar entorno de entrenamiento (instalación guiada)",self.setup_training_env)
             self.button(c,"Cancelar instalación de dependencias",self.cancel_training_setup)
             self.label(c,"Instala sólo en un .venv NUEVO; no actualiza Python, drivers, ni entornos existentes.",9,MUTED)
@@ -654,6 +658,23 @@ class Fresita(tk.Tk):
                 self.events.put(("train_check_error",str(exc)))
         threading.Thread(target=work,daemon=True).start()
 
+    def check_unsloth_env(self):
+        if self.unsloth_check_busy or self.setup_busy or self.train_check_busy:
+            return
+        if self.proc and self.proc.poll() is None:
+            messagebox.showwarning("Entrenamiento activo",
+                                   "Espera a terminar el entrenamiento para revisar Unsloth.")
+            return
+        self.unsloth_check_busy=True
+        self.status.set("Revisando Unsloth y CUDA sin instalar paquetes...")
+        def work():
+            try:
+                report=check_unsloth()
+                self.events.put(("unsloth_check_result",report))
+            except (OSError,ValueError,RuntimeError,TimeoutError) as exc:
+                self.events.put(("unsloth_check_error",str(exc)))
+        threading.Thread(target=work,daemon=True).start()
+
     def train(self):
         if self.setup_busy:
             messagebox.showwarning("Instalación activa","Espera a terminar la instalación.")
@@ -733,6 +754,14 @@ class Fresita(tk.Tk):
                     self.setup_busy=False
                     self.status.set("No se completó la instalación de dependencias.")
                     messagebox.showerror("Instalación de dependencias",data)
+                if kind=="unsloth_check_result":
+                    self.unsloth_check_busy=False
+                    self.status.set("Inspección de Unsloth terminada; entrenamiento no probado")
+                    messagebox.showinfo("Unsloth opcional",format_unsloth_report(data))
+                if kind=="unsloth_check_error":
+                    self.unsloth_check_busy=False
+                    self.status.set("No se pudo inspeccionar Unsloth")
+                    messagebox.showwarning("Unsloth opcional",data)
                 if kind=="train_check_result":
                     self.train_check_busy=False
                     self.status.set("Diagnóstico CUDA completado" if data["ok"] else

@@ -246,3 +246,11 @@ Fresita intenta revertir **únicamente el entorno nuevo** creado en ese
 intento. No modifica entornos anteriores, pesos ni datasets. Esta
 validación no descarga modelos, no requiere GPU física y no sustituye
 la prueba de LoRA/QLoRA en Windows 11 con CUDA real.
+
+## Diagnóstico opcional Unsloth (2026-11-02)
+
+En **Entrenar**, el botón **Comprobar Unsloth opcional (sin instalar)**
+lee versiones locales y disponibilidad CUDA en el entorno de entrenamiento.
+No modifica paquetes ni ejecuta entrenamiento Unsloth; el worker de
+entrenamiento sigue siendo TRL/PEFT. Véase
+[documentación y límites](docs/UNSLOTH.md).
