@@ -1,7 +1,7 @@
 # Benchmark de latencia y tokens por segundo (experimental)
 
 Fresita puede medir un modelo local compatible con OpenAI usando el script
-fresita_speed.py. El panel gráfico todavía no incorpora esta medición.
+fresita_speed.py. El panel gráfico integra esta medición en la pestaña **Evaluar IA**.
 
 Ejemplo con Python 3.12 desde FresitaStudio:
 
@@ -19,6 +19,6 @@ inventar tokens por segundo.
 
 La tasa calculada es tokens de salida / duración total de solicitudes.
 Incluye latencia HTTP y prefill; no representa velocidad pura de
-decodificación. La medición no cuantifica ni atribuye VRAM a un proceso.
+decodificación. El benchmark también muestrea la VRAM global de la GPU 0 (si existe nvidia-smi) y la RAM global de Windows mediante GlobalMemoryStatusEx. Informa línea base, pico observado, último valor y delta pico-base, todos en MiB. **Estos números NO son memoria atribuible al modelo**, porque incluyen otros procesos y pueden omitir picos entre muestras. Si el hardware o la API no permiten medir, muestra N/D; nunca inventa valores. El muestreo comienza y termina con el benchmark y no permanece activo después.
 El servidor debe estar iniciado manualmente. No se ejecuta código
 Python generado por el modelo. Las pruebas CI usan un requester falso.

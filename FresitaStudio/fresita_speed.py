@@ -12,6 +12,7 @@ import tempfile
 import time
 from uuid import uuid4
 from fresita_predict import generate_predictions, local_server, MAX_RESPONSE_BYTES, MAX_PREDICTION
+from fresita_resources import ResourceSampler
 
 def request_usage(host, port, model, prompt, max_tokens):
     """Sólo HTTP loopback. No se estima usage si el servidor no lo proporciona."""
@@ -69,7 +70,8 @@ def summarize_speed(durations, token_counts):
 
 def benchmark_local(dataset, output_dir, *, workspace, endpoint, model,
                     max_tokens=256, cancelled=None, progress=None,
-                    requester=request_usage, clock=time.perf_counter):
+                    requester=request_usage, clock=time.perf_counter,
+                    sampler_factory=ResourceSampler):
     """Predicciones privadas y reporte agregado; no deja reporte parcial al cancelar."""
     local_server(endpoint)
     durations, tokens = [], []
@@ -82,10 +84,16 @@ def benchmark_local(dataset, output_dir, *, workspace, endpoint, model,
         durations.append(duration)
         tokens.append(count)
         return answer
-    output, summary = generate_predictions(dataset, output_dir, endpoint=endpoint,
-        model=model, max_tokens=max_tokens, cancelled=cancelled, progress=progress,
-        requester=measured)
+    sampler = sampler_factory()
+    sampler.start()
+    try:
+        output, summary = generate_predictions(dataset, output_dir, endpoint=endpoint,
+            model=model, max_tokens=max_tokens, cancelled=cancelled, progress=progress,
+            requester=measured)
+    finally:
+        resources = sampler.stop()
     report = summarize_speed(durations, tokens)
+    report.update(resources)
     report["sha256_predicciones"] = summary["sha256_predicciones"]
     folder = Path(workspace)/"experiments"/"velocidad"
     folder.mkdir(parents=True, exist_ok=True)

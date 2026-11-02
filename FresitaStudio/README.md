@@ -78,3 +78,6 @@ La pestaña **Evaluar IA** recibe un JSONL de predicciones ya generadas y calcul
 ## Generar predicciones locales y evaluarlas
 
 En **Evaluar IA**, Fresita ahora permite generar respuestas con un servidor OpenAI-compatible en `127.0.0.1` y evaluarlas. Sólo envía las preguntas (no referencias) y requiere confirmación. Los JSONL de predicciones contienen textos privados y permanecen en el equipo. [Guía y límites](docs/PREDICCIONES_LOCALES.md). El servidor y el modelo deben estar iniciados por el usuario. CI usa un servidor falso, no CUDA.
+
+## Medición de recursos durante inferencia (2026-11-01)
+En **Evaluar IA**, el benchmark local registra línea base y pico observado de VRAM global de GPU 0 (nvidia-smi) y RAM global de Windows, sin sondeo permanente. No mide el consumo exclusivo del modelo ni garantiza capturar picos breves. Cuando falta una fuente, muestra N/D. El reporte numérico no contiene preguntas ni respuestas. Véase [docs/VELOCIDAD.md](docs/VELOCIDAD.md).

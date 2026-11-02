@@ -181,7 +181,7 @@ class Fresita(tk.Tk):
             self.button(c,"Elegir benchmark",self.choose_benchmark)
             self.button(c,"Generar, medir velocidad y evaluar (local)",self.start_benchmark,True)
             self.button(c,"Cancelar generación",self.cancel_benchmark)
-            self.label(c,"Mide latencia media, p95 y tokens/s sólo si el servidor reporta usage. No mide VRAM.",9,MUTED)
+            self.label(c,"Mide latencia, tokens/s y muestrea VRAM GPU 0 / RAM global. No atribuye memoria al modelo.",9,MUTED)
             self.label(c,"Se envía únicamente la pregunta a 127.0.0.1. El JSONL de salida contiene respuestas y referencias privadas; no lo subas a GitHub.",9,MUTED)
             self.button(c,"Evaluar predicciones JSONL",self.evaluate_quality,True)
             self.label(c,"Español: coincidencia normalizada y F1 de tokens. Python: coincidencia y sintaxis; no corrección funcional.",10,MUTED)
@@ -504,6 +504,11 @@ class Fresita(tk.Tk):
                         f"Reporte de velocidad: {data[3]}\n"
                         f"Latencia media: {data[4]['latencia_media_s']:.3f} s\n"
                         f"Tokens/s extremo a extremo: {data[4]['tokens_salida_por_s_extremo_a_extremo'] if data[4]['tokens_salida_por_s_extremo_a_extremo'] is not None else 'N/D (sin usage)'}\n"
+                        f"VRAM GPU 0 global: base {data[4]['gpu_global_base_mib'] if data[4]['gpu_global_base_mib'] is not None else 'N/D'} MiB"
+                        f" | pico {data[4]['gpu_global_pico_mib'] if data[4]['gpu_global_pico_mib'] is not None else 'N/D'} MiB\n"
+                        f"RAM global: base {data[4]['ram_global_base_mib'] if data[4]['ram_global_base_mib'] is not None else 'N/D'} MiB"
+                        f" | pico {data[4]['ram_global_pico_mib'] if data[4]['ram_global_pico_mib'] is not None else 'N/D'} MiB\n"
+                        "Son mediciones globales, NO memoria atribuible al modelo.\n"
                         "No se envió la referencia al modelo.")
                 if kind=="benchmark_error":
                     self.benchmark_running=False
