@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from urllib.request import urlopen
 
+from fresita_llama import latest_compatible_release, install_release, installed_server, gpu_compatibility, start_server
 from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
 from fresita_metrics import list_experiments,read_history,read_summary,compare_summaries
 from fresita_quality import evaluate_predictions, save_quality_report
@@ -51,6 +52,10 @@ class Fresita(tk.Tk):
         self.server_pid=tk.StringVar()
         self.benchmark_cancel=threading.Event()
         self.benchmark_running=False
+        self.llama_proc=None
+        self.llama_gguf=tk.StringVar()
+        self.llama_info=tk.StringVar(value="Motor aún no comprobado")
+        self.llama_busy=False
         self.gpu=tk.StringVar(value="GPU: no consultada")
         self.shell()
         self.show("Inicio")
@@ -85,7 +90,7 @@ class Fresita(tk.Tk):
         sidebar.pack(side="left",fill="y");sidebar.pack_propagate(False)
         self.label(sidebar,"   🍓 FRESITA",20,PINK,True)
         self.label(sidebar,"      AI TRAINING STUDIO",9,MUTED,True)
-        for name in ("Inicio","Modelos","Datasets","Entrenar","Crear IA","Experimentos","Evaluar IA","Actividad"):
+        for name in ("Inicio","Modelos","Datasets","Entrenar","Crear IA","Experimentos","Evaluar IA","Motor llama.cpp","Actividad"):
             self.button(sidebar,"  "+name,lambda n=name:self.show(n))
         self.label(sidebar,"   Local · Windows x64",9,MUTED)
         main=tk.Frame(self,bg=BG)
@@ -213,6 +218,20 @@ class Fresita(tk.Tk):
             self.button(c,"Evaluar predicciones JSONL",self.evaluate_quality,True)
             self.label(c,"Español: coincidencia normalizada y F1 de tokens. Python: coincidencia y sintaxis; no corrección funcional.",10,MUTED)
             self.label(c,"Se guardan únicamente métricas agregadas y SHA-256. Límite: 8 MB y 5,000 filas.",10,MUTED)
+        elif name=="Motor llama.cpp":
+            c=self.card()
+            self.label(c,"Inferencia local con llama.cpp · Windows x64 CUDA 13.4",16,PINK,True)
+            self.label(c,"Motor y bibliotecas CUDA oficiales, bajo demanda; sin instalar drivers.",10,MUTED)
+            self.label(c,"La versión reciente de llama.cpp puede ser preliminar. Conservar versiones permite volver atrás.",9,MUTED)
+            tk.Label(c,textvariable=self.llama_info,bg=PANEL,fg="#B2E5C1",
+                     font=(FONT,10),anchor="w",justify="left",wraplength=720).pack(fill="x",pady=8)
+            self.button(c,"Comprobar versión disponible y driver",self.check_llama)
+            self.button(c,"Descargar última compilación NVIDIA CUDA 13.4",self.install_llama,True)
+            self.field(c,"MODELO GGUF LOCAL",self.llama_gguf)
+            self.button(c,"Seleccionar archivo GGUF",self.choose_gguf)
+            self.button(c,"Iniciar llama-server (127.0.0.1:8080)",self.launch_llama)
+            self.button(c,"Detener servidor iniciado por Fresita",self.stop_llama)
+            self.label(c,"Se inicia con 2048 tokens de contexto y 20 capas GPU; puede variar el consumo de VRAM.",9,MUTED)
         elif name=="Actividad":
             c=self.card()
             self.button(c,"Detener entrenamiento",self.stop)
@@ -221,6 +240,62 @@ class Fresita(tk.Tk):
             self.console.pack(fill="both",expand=True)
             self.console.insert("1.0","\n".join(self.logs[-400:]))
             self.console.configure(state="disabled")
+
+    def check_llama(self):
+        if self.llama_busy:return
+        self.llama_busy=True
+        self.llama_info.set("Consultando GitHub y controlador NVIDIA...")
+        def work():
+            try:
+                release=latest_compatible_release()
+                driver=gpu_compatibility()
+                installed=installed_server()
+                status=(f"Disponible: {release['tag']} · CUDA 13.4 · "
+                        f"Instalada: {installed[1] if installed else 'ninguna'}\\n{driver}")
+                self.events.put(("llama_info",status))
+            except (OSError,ValueError,KeyError) as exc:
+                self.events.put(("llama_error",str(exc)))
+        threading.Thread(target=work,daemon=True).start()
+
+    def install_llama(self):
+        if self.llama_busy:return
+        if not messagebox.askyesno("Descarga llama.cpp",
+            "¿Descargar desde GitHub el motor y las bibliotecas CUDA 13.4? Aproximadamente 600 MB. No se instalarán controladores."):return
+        self.llama_busy=True
+        self.llama_info.set("Buscando versión oficial y descargando...")
+        def work():
+            try:
+                release=latest_compatible_release()
+                self.events.put(("log",f"Descargando llama.cpp {release['tag']} CUDA 13.4"))
+                target=install_release(release,progress=lambda msg:self.events.put(("log",msg)))
+                self.events.put(("llama_info",f"Instalada {release['tag']}: {target}"))
+            except (OSError,ValueError,KeyError,RuntimeError) as exc:
+                self.events.put(("llama_error",str(exc)))
+        threading.Thread(target=work,daemon=True).start()
+
+    def choose_gguf(self):
+        path=filedialog.askopenfilename(filetypes=[("Modelos GGUF","*.gguf")])
+        if path:self.llama_gguf.set(path)
+
+    def launch_llama(self):
+        if self.llama_proc and self.llama_proc.poll() is None:
+            messagebox.showinfo("llama.cpp","Ya está iniciado desde Fresita.");return
+        try:
+            pair=installed_server()
+            if not pair:raise ValueError("Instala primero llama.cpp CUDA 13.4")
+            if not messagebox.askyesno("Abrir servidor local",
+                                      "¿Iniciar llama.cpp y cargar este GGUF usando la GPU?"):return
+            self.llama_proc=start_server(pair[0],self.llama_gguf.get())
+            self.endpoint.set("http://127.0.0.1:8080/v1")
+            self.llama_info.set(f"llama-server iniciado PID {self.llama_proc.pid}; usa Evaluar IA para probar.")
+        except (OSError,ValueError) as exc:
+            messagebox.showerror("No se inició llama.cpp",str(exc))
+
+    def stop_llama(self):
+        if self.llama_proc and self.llama_proc.poll() is None:
+            self.llama_proc.terminate()
+            self.llama_info.set("Detención solicitada a llama-server")
+        else:self.llama_info.set("No hay servidor propio activo.")
 
     def refresh_experiments(self):
         try:
@@ -558,6 +633,13 @@ class Fresita(tk.Tk):
             while True:
                 kind,data=self.events.get_nowait()
                 if kind=="gpu":self.gpu.set(data)
+                if kind=="llama_info":
+                    self.llama_busy=False
+                    self.llama_info.set(data)
+                if kind=="llama_error":
+                    self.llama_busy=False
+                    self.llama_info.set("Error: "+data)
+                    messagebox.showerror("Motor llama.cpp",data)
                 if kind=="pid_discovered":
                     endpoint, pid, children, ram, vram = data
                     if endpoint != self.endpoint.get().strip():
@@ -626,6 +708,7 @@ class Fresita(tk.Tk):
 
     def close(self):
         self.benchmark_cancel.set()
+        self.stop_llama()
         if self.proc and self.proc.poll() is None:
             if not messagebox.askyesno("Entrenamiento activo","¿Detener el proceso y salir?"):return
             self.proc.terminate()
