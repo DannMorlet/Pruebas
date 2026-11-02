@@ -44,6 +44,7 @@ class Fresita(tk.Tk):
         self.rank=tk.StringVar(value="8")
         self.endpoint=tk.StringVar(value="http://127.0.0.1:1234/v1")
         self.benchmark_path=tk.StringVar()
+        self.server_pid=tk.StringVar()
         self.benchmark_cancel=threading.Event()
         self.benchmark_running=False
         self.gpu=tk.StringVar(value="GPU: no consultada")
@@ -177,11 +178,12 @@ class Fresita(tk.Tk):
             self.label(c,"Evalúa archivos existentes o genera respuestas usando un servidor local.",10,MUTED)
             self.field(c,"SERVIDOR LOCAL (SÓLO 127.0.0.1)",self.endpoint)
             self.field(c,"MODELO CARGADO EN SERVIDOR LOCAL",self.model)
+            self.field(c,"PID DEL SERVIDOR (OPCIONAL; PARA VRAM POR PROCESO)",self.server_pid)
             self.field(c,"BENCHMARK JSONL (PREGUNTA, REFERENCIA, CATEGORIA)",self.benchmark_path)
             self.button(c,"Elegir benchmark",self.choose_benchmark)
             self.button(c,"Generar, medir velocidad y evaluar (local)",self.start_benchmark,True)
             self.button(c,"Cancelar generación",self.cancel_benchmark)
-            self.label(c,"Mide latencia, tokens/s y muestrea VRAM GPU 0 / RAM global. No atribuye memoria al modelo.",9,MUTED)
+            self.label(c,"Mide latencia, tokens/s, VRAM GPU 0 y RAM global. PID opcional: VRAM del proceso si NVIDIA la informa; en WDDM puede aparecer N/D.",9,MUTED)
             self.label(c,"Se envía únicamente la pregunta a 127.0.0.1. El JSONL de salida contiene respuestas y referencias privadas; no lo subas a GitHub.",9,MUTED)
             self.button(c,"Evaluar predicciones JSONL",self.evaluate_quality,True)
             self.label(c,"Español: coincidencia normalizada y F1 de tokens. Python: coincidencia y sintaxis; no corrección funcional.",10,MUTED)
@@ -323,24 +325,31 @@ class Fresita(tk.Tk):
                 raise ValueError("Especifica el identificador exacto del modelo cargado.")
             dataset=Path(self.benchmark_path.get().strip())
             cases=read_cases(dataset)
+            pid_text=self.server_pid.get().strip()
+            if pid_text and (not pid_text.isascii() or not pid_text.isdecimal()
+                             or not 1 <= int(pid_text) <= 4294967295):
+                raise ValueError("PID inválido: usa un entero positivo de Windows.")
+            process_pid=int(pid_text) if pid_text else None
             if not messagebox.askyesno("Inferencia local",
                 f"Se enviarán {len(cases)} preguntas a {endpoint}.\\n"
                 "Sólo se enviarán las preguntas, no las referencias.\\n"
-                "Los resultados privados quedarán en tu equipo. ¿Continuar?"):
+                "Los resultados privados quedarán en tu equipo. "
+                + (f"Se medirá VRAM del PID {process_pid} si está disponible. " if process_pid else "")
+                + "¿Continuar?"):
                 return
             self.benchmark_cancel.clear()
             self.benchmark_running=True
             self.status.set("Generando predicciones locales: 0/"+str(len(cases)))
             threading.Thread(target=self.run_benchmark,
-                args=(dataset,endpoint,model),daemon=True).start()
+                args=(dataset,endpoint,model,process_pid),daemon=True).start()
         except (OSError,ValueError,UnicodeError) as e:
             messagebox.showerror("Benchmark no iniciado",str(e))
 
-    def run_benchmark(self,dataset,endpoint,model):
+    def run_benchmark(self,dataset,endpoint,model,process_pid=None):
         try:
             out,speed_path,speed=benchmark_local(dataset,BASE/"experiments"/"predicciones",
                 workspace=BASE,endpoint=endpoint,model=model,
-                cancelled=self.benchmark_cancel.is_set,
+                process_pid=process_pid, cancelled=self.benchmark_cancel.is_set,
                 progress=lambda i,n:self.events.put(("benchmark_progress",(i,n))))
             report=evaluate_predictions(out)
             saved=save_quality_report(report,BASE)
@@ -508,7 +517,11 @@ class Fresita(tk.Tk):
                         f" | pico {data[4]['gpu_global_pico_mib'] if data[4]['gpu_global_pico_mib'] is not None else 'N/D'} MiB\n"
                         f"RAM global: base {data[4]['ram_global_base_mib'] if data[4]['ram_global_base_mib'] is not None else 'N/D'} MiB"
                         f" | pico {data[4]['ram_global_pico_mib'] if data[4]['ram_global_pico_mib'] is not None else 'N/D'} MiB\n"
-                        "Son mediciones globales, NO memoria atribuible al modelo.\n"
+                        f"VRAM del proceso PID {data[4].get('gpu_proceso_pid')}: "
+                        f"pico {data[4].get('gpu_proceso_pico_mib') if data[4].get('gpu_proceso_pico_mib') is not None else 'N/D'} MiB\n"
+                        if data[4].get("gpu_proceso_pid") is not None else
+                        "Sin PID: no se midió VRAM por proceso.\n"
+                        "La VRAM por PID no es memoria exclusiva del modelo.\n"
                         "No se envió la referencia al modelo.")
                 if kind=="benchmark_error":
                     self.benchmark_running=False
