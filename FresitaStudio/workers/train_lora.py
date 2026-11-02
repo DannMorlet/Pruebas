@@ -10,6 +10,7 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fresita_core import validate_eval_pair, evaluation_summary
 from fresita_metrics import append_metrics, evaluation_fingerprints
+from fresita_training_diagnostics import run_training_stage
 
 def main():
     parser=argparse.ArgumentParser()
@@ -50,7 +51,7 @@ def main():
             bnb_4bit_compute_dtype=dtype,bnb_4bit_use_double_quant=True)
         kwargs["device_map"]="auto"
     print("Iniciando entrenamiento CUDA con:",torch.cuda.get_device_name(0),flush=True)
-    model=AutoModelForCausalLM.from_pretrained(cfg["model"],**kwargs)
+    model=run_training_stage("carga",AutoModelForCausalLM.from_pretrained,cfg["model"],**kwargs)
     model.config.use_cache=False
     tok=AutoTokenizer.from_pretrained(cfg["model"],trust_remote_code=False)
     if tok.pad_token is None:tok.pad_token=tok.eos_token
@@ -70,14 +71,14 @@ def main():
             append_metrics(Path(cfg["output"])/"metricas_historial.jsonl",
                            int(state.global_step), logs or {})
 
-    trainer=SFTTrainer(model=model,args=opts,train_dataset=ds,
+    trainer=run_training_stage("preparacion",SFTTrainer,model=model,args=opts,train_dataset=ds,
         eval_dataset=eval_ds,processing_class=tok,peft_config=peft,
         callbacks=[HistoryCallback()])
-    trainer.train()
+    run_training_stage("entrenamiento",trainer.train)
     trainer.save_model(cfg["output"])
     tok.save_pretrained(cfg["output"])
     if eval_ds is not None:
-        metrics=trainer.evaluate()
+        metrics=run_training_stage("evaluacion",trainer.evaluate)
         report=evaluation_summary(metrics,counts["validacion_unicos"],steps)
         report.update(evaluation_fingerprints(cfg["eval_dataset"],tok,256))
         target=Path(cfg["output"])/"metricas_validacion.json"
