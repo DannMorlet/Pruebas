@@ -111,3 +111,18 @@ No hay muestreo continuo ni acceso a pesos o datasets.
 
 CI verifica la lógica con mediciones simuladas; falta validación con servidor
 real en Windows 11 y RTX 5060.
+
+
+## Instantánea de VRAM por PID de posibles secundarios
+
+El botón **Detectar PID y posibles procesos secundarios** consulta una vez
+`nvidia-smi --id=0 --query-compute-apps=pid,used_gpu_memory` y muestra la
+VRAM de GPU 0 para el listener y los candidatos, individualmente, cuando
+NVIDIA informa valores numéricos inequívocos. No suma procesos ni afirma
+que un PID cargue los pesos del modelo. En Windows WDDM pueden aparecer
+valores **N/D**, incluso si el proceso usa GPU. La lectura es puntual,
+no representa un pico y puede quedar obsoleta al instante. No hay
+sondeo permanente ni se accede a datos privados.
+
+Las pruebas CI usan salidas simuladas de nvidia-smi; la RTX 5060 física
+sigue pendiente de validación.

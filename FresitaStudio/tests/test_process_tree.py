@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fresita_process_tree import possible_descendants, discover_possible_children, windows_process_pairs, candidate_ram_snapshot
+from fresita_process_tree import possible_descendants, discover_possible_children, windows_process_pairs, candidate_ram_snapshot, candidate_gpu_snapshot
 
 
 class ProcessTreeTests(unittest.TestCase):
@@ -72,6 +72,44 @@ class ProcessTreeTests(unittest.TestCase):
             return 5
         self.assertEqual(candidate_ram_snapshot([3, 9], probe=probe), [(3, 5), (9, 5)])
         self.assertEqual(seen, [3, 9])
+
+
+    def test_vram_candidatos_una_consulta_sin_suma(self):
+        calls = []
+        def runner():
+            calls.append(True)
+            return "10, 512\n20, 128\n99, 999\n"
+        self.assertEqual(candidate_gpu_snapshot([10, 20, 30], runner=runner),
+                         [(10, 512), (20, 128), (30, None)])
+        self.assertEqual(len(calls), 1)
+
+    def test_vram_wddm_y_duplicados_son_nd(self):
+        output = "10, N/A\n20, 300\n20, 250\n"
+        self.assertEqual(candidate_gpu_snapshot([10, 20], runner=lambda: output),
+                         [(10, None), (20, None)])
+
+    def test_vram_error_de_nvidia_smi_es_nd(self):
+        def denied():
+            raise OSError("Sin acceso a NVIDIA")
+        self.assertEqual(candidate_gpu_snapshot([10, 20], runner=denied),
+                         [(10, None), (20, None)])
+
+    def test_vram_salida_invalida_no_se_inventa(self):
+        self.assertEqual(candidate_gpu_snapshot([10], runner=lambda: None),
+                         [(10, None)])
+        self.assertEqual(candidate_gpu_snapshot([10], runner=lambda: "10, 512 MiB\n"),
+                         [(10, None)])
+
+    def test_vram_lista_invalida_o_duplicada(self):
+        for bad in ([0], [True], [10, 10], ["10"], [4294967296],
+                    list(range(1, 35))):
+            with self.subTest(pids=bad), self.assertRaises(ValueError):
+                candidate_gpu_snapshot(bad, runner=lambda: "")
+
+    def test_vram_lista_vacia_no_consulta(self):
+        def should_not_run():
+            raise AssertionError("No debe ejecutar nvidia-smi")
+        self.assertEqual(candidate_gpu_snapshot([], runner=should_not_run), [])
 
     @unittest.skipUnless(os.name == "nt", "Toolhelp requiere Windows")
     def test_snapshot_real_solo_lectura(self):

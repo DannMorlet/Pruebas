@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import ctypes
 import os
+import shutil
+import subprocess
 
 
 def possible_descendants(pairs, root_pid: int, *, max_depth: int = 3, limit: int = 32) -> list[int] | None:
@@ -63,6 +65,39 @@ def candidate_ram_snapshot(pids, *, probe=None) -> list[tuple[int, int | None]]:
             mib = None
         result.append((pid, mib if type(mib) is int and mib >= 0 else None))
     return result
+
+
+
+def candidate_gpu_snapshot(pids, *, runner=None) -> list[tuple[int, int | None]]:
+    """VRAM observada por PID candidato, en GPU 0; no suma ni atribuye al modelo.
+
+    Consulta nvidia-smi una sola vez. WDDM puede devolver N/A, que se muestra
+    como N/D. Los PIDs son candidatos por parentesco, no motores verificados.
+    """
+    if (not isinstance(pids, (list, tuple)) or len(pids) > 33
+            or any(type(pid) is not int or not 1 <= pid <= 4294967295 for pid in pids)
+            or len(set(pids)) != len(pids)):
+        raise ValueError("Lista de PIDs inválida o duplicada")
+    if not pids:
+        return []
+    unavailable = [(pid, None) for pid in pids]
+    if runner is None:
+        executable = shutil.which("nvidia-smi")
+        if not executable:
+            return unavailable
+        def runner():
+            return subprocess.run(
+                [executable, "--id=0", "--query-compute-apps=pid,used_gpu_memory",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=3, check=True).stdout
+    try:
+        output = runner()
+        if not isinstance(output, str):
+            return unavailable
+        from fresita_resources import parse_process_gpu_memory
+        return [(pid, parse_process_gpu_memory(output, pid)) for pid in pids]
+    except (OSError, ValueError, TypeError, subprocess.SubprocessError):
+        return unavailable
 
 
 def windows_process_pairs() -> list[tuple[int, int]] | None:
