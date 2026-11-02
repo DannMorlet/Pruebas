@@ -100,6 +100,52 @@ def candidate_gpu_snapshot(pids, *, runner=None) -> list[tuple[int, int | None]]
         return unavailable
 
 
+
+def candidate_gpu_evidence_snapshot(pids, *, runner=None) -> list[tuple[int, bool | None, int | None]]:
+    """Evidencia puntual de PID en lista de cómputo NVIDIA GPU 0.
+
+    True indica una fila inequívoca de nvidia-smi, NO que el PID aloje
+    el modelo. None significa no confirmado (ausente, WDDM o error).
+    La VRAM puede ser N/D aun cuando se observe el PID.
+    """
+    if (not isinstance(pids, (list, tuple)) or len(pids) > 33
+            or any(type(pid) is not int or not 1 <= pid <= 4294967295 for pid in pids)
+            or len(set(pids)) != len(pids)):
+        raise ValueError("Lista de PIDs inválida o duplicada")
+    if not pids:
+        return []
+    unavailable = [(pid, None, None) for pid in pids]
+    if runner is None:
+        executable = shutil.which("nvidia-smi")
+        if not executable:
+            return unavailable
+        def runner():
+            return subprocess.run(
+                [executable, "--id=0", "--query-compute-apps=pid,used_gpu_memory",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=3, check=True).stdout
+    try:
+        output = runner()
+        if not isinstance(output, str):
+            return unavailable
+        from fresita_resources import parse_process_gpu_memory
+        rows = {}
+        for line in output.splitlines():
+            parts = [part.strip() for part in line.split(",")]
+            if (len(parts) == 2 and parts[0].isascii() and parts[0].isdecimal()
+                    and 1 <= int(parts[0]) <= 4294967295):
+                rows.setdefault(int(parts[0]), []).append(parts[1])
+        result = []
+        for pid in pids:
+            if len(rows.get(pid, [])) != 1:
+                result.append((pid, None, None))
+            else:
+                result.append((pid, True, parse_process_gpu_memory(output, pid)))
+        return result
+    except (OSError, ValueError, TypeError, subprocess.SubprocessError):
+        return unavailable
+
+
 def windows_process_pairs() -> list[tuple[int, int]] | None:
     """Snapshot Toolhelp de PID/PPID solamente; N/D si Windows no permite leer."""
     if os.name != "nt":
