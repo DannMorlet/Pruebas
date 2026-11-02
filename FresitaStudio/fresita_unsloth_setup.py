@@ -41,7 +41,7 @@ def build_unsloth_setup_plan(*, workspace=None):
          ["py", "-3.13", "-c",
           "import sys,struct; assert sys.version_info[:2]==(3,13) and struct.calcsize('P')==8"]),
         ("Crear entorno Unsloth separado",
-         ["uv", "venv", "--no-python-downloads", "--python", "3.13", str(venv)]),
+         ["uv", "venv", "--allow-existing", "--no-python-downloads", "--python", "3.13", str(venv)]),
         ("Instalar torchao primero (recomendación oficial Windows)",
          ["uv", "pip", "install", "--python", str(python), "torchao"]),
         ("Instalar Unsloth con backend PyTorch automático",
