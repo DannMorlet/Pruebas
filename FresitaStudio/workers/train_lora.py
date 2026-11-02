@@ -11,7 +11,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fresita_core import validate_eval_pair, evaluation_summary
 from fresita_metrics import append_metrics, evaluation_fingerprints
 from fresita_training_diagnostics import run_training_stage
-from fresita_checkpoints import checkpoint_settings
+from fresita_checkpoints import sft_training_kwargs
 
 def main():
     parser=argparse.ArgumentParser()
@@ -27,7 +27,6 @@ def main():
     if args.preflight:
         print("DIAGNÓSTICO COMPLETADO: no se cargaron pesos ni datasets",flush=True)
         return
-    checkpoint_options=checkpoint_settings(cfg["steps"],cfg.get("checkpoint_interval",0))
     import torch
     from datasets import load_dataset
     from transformers import AutoTokenizer,AutoModelForCausalLM,BitsAndBytesConfig,TrainerCallback
@@ -60,15 +59,16 @@ def main():
     rank=int(cfg["rank"])
     peft=LoraConfig(r=rank,lora_alpha=rank*2,task_type="CAUSAL_LM",target_modules="all-linear")
     steps=int(cfg["steps"])
-    opts=SFTConfig(output_dir=cfg["output"],max_steps=steps,
+    opts=SFTConfig(**sft_training_kwargs({
+       "output_dir":cfg["output"],"max_steps":steps,
        per_device_train_batch_size=1,per_device_eval_batch_size=1,
        gradient_accumulation_steps=4,eval_accumulation_steps=1,
        max_length=256,learning_rate=float(cfg["lr"]),dataset_text_field="text",
-       gradient_checkpointing=True,logging_steps=5,save_strategy="no",
+       gradient_checkpointing=True,logging_steps=5,
        eval_strategy="steps" if eval_ds is not None else "no",
        eval_steps=max(1,steps//5) if eval_ds is not None else None,
        report_to="none",bf16=dtype==torch.bfloat16,fp16=dtype==torch.float16,
-       **checkpoint_options)
+       },steps,cfg.get("checkpoint_interval",0)))
     class HistoryCallback(TrainerCallback):
         def on_log(self, args, state, control, logs=None, **kwargs):
             append_metrics(Path(cfg["output"])/"metricas_historial.jsonl",
