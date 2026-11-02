@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fresita_process_tree import possible_descendants, discover_possible_children, windows_process_pairs, candidate_ram_snapshot, candidate_gpu_snapshot
+from fresita_process_tree import possible_descendants, discover_possible_children, windows_process_pairs, candidate_ram_snapshot, candidate_gpu_snapshot, candidate_gpu_evidence_snapshot
 
 
 class ProcessTreeTests(unittest.TestCase):
@@ -110,6 +110,39 @@ class ProcessTreeTests(unittest.TestCase):
         def should_not_run():
             raise AssertionError("No debe ejecutar nvidia-smi")
         self.assertEqual(candidate_gpu_snapshot([], runner=should_not_run), [])
+
+
+    def test_gpu_evidencia_pid_aun_con_vram_wddm_nd(self):
+        rows = candidate_gpu_evidence_snapshot([10, 20, 30],
+            runner=lambda: "10, N/A\\n20, 512\\n99, 100\\n")
+        self.assertEqual(rows, [(10, True, None), (20, True, 512), (30, None, None)])
+
+    def test_gpu_evidencia_duplicada_no_se_confirma(self):
+        self.assertEqual(candidate_gpu_evidence_snapshot([10],
+            runner=lambda: "10, 100\\n10, 200\\n"), [(10, None, None)])
+
+    def test_gpu_evidencia_solo_una_consulta(self):
+        calls = []
+        def runner():
+            calls.append(1)
+            return "10, 256\\n"
+        self.assertEqual(candidate_gpu_evidence_snapshot([10], runner=runner),
+                         [(10, True, 256)])
+        self.assertEqual(calls, [1])
+
+    def test_gpu_evidencia_error_y_no_disponible(self):
+        def unavailable():
+            raise OSError("NVIDIA no disponible")
+        self.assertEqual(candidate_gpu_evidence_snapshot([10], runner=unavailable),
+                         [(10, None, None)])
+        self.assertEqual(candidate_gpu_evidence_snapshot([10], runner=lambda: None),
+                         [(10, None, None)])
+
+    def test_gpu_evidencia_pids_invalidos_y_vacios(self):
+        for pids in ([True], [10, 10], [0], ["10"], list(range(1, 35))):
+            with self.subTest(pids=pids), self.assertRaises(ValueError):
+                candidate_gpu_evidence_snapshot(pids, runner=lambda: "")
+        self.assertEqual(candidate_gpu_evidence_snapshot([], runner=lambda: ""), [])
 
     @unittest.skipUnless(os.name == "nt", "Toolhelp requiere Windows")
     def test_snapshot_real_solo_lectura(self):
