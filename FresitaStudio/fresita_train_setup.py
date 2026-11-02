@@ -19,6 +19,21 @@ TORCH_VERSION = "2.14.1"
 TORCH_INDEX = "https://download.pytorch.org/whl/cu132"
 STAGE_TIMEOUT_S = 2400
 
+# Validación sin descargar pesos ni requerir una GPU física. Los paquetes
+# instalados deben poder importarse y torch debe ser un wheel CUDA 13.2.
+POST_INSTALL_CHECK = """
+import importlib
+import importlib.metadata as metadata
+import torch
+
+if torch.version.cuda != '13.2':
+    raise RuntimeError('PyTorch no es la compilación CUDA 13.2 esperada')
+for name in ('transformers', 'datasets', 'accelerate', 'peft', 'trl', 'safetensors'):
+    metadata.version(name)
+    importlib.import_module(name)
+print('PyTorch CUDA 13.2 y módulos de entrenamiento importables')
+"""
+
 class SetupCancelled(RuntimeError):
     pass
 
@@ -53,6 +68,17 @@ def build_setup_plan(qlora=False, *, workspace=None, bundle_root=None):
     ]
     if qlora:
         commands.append(("Instalar bitsandbytes para QLoRA", pip + ["bitsandbytes"]))
+    # pip check detecta conflictos de metadatos que un install -r puede
+    # introducir al resolver paquetes; la prueba de imports detecta fallos
+    # que pip check no observa. Ambas se hacen antes de dar por listo el venv.
+    commands.append(("Verificar conflictos de dependencias",
+                     [str(python), "-m", "pip", "--isolated", "check"]))
+    if qlora:
+        commands.append(("Verificar paquete bitsandbytes",
+                         [str(python), "-c",
+                          "import importlib.metadata as m; m.version('bitsandbytes')"]))
+    commands.append(("Comprobar CUDA de PyTorch e importar módulos",
+                     [str(python), "-c", POST_INSTALL_CHECK]))
     return {"venv": venv, "python": python, "qlora": qlora,
             "commands": commands, "requirements": req}
 

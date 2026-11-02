@@ -231,3 +231,18 @@ mostrar datos privados. Después de instalar, usa el botón de diagnóstico
 para verificar CUDA; **CI no prueba descargas reales ni entrenamiento GPU**.
 PyTorch cu132 y llama.cpp CUDA 13.4 son entornos independientes.
 Referencia oficial: https://pytorch.org/get-started/previous-versions/
+
+## Validación posterior a la instalación (2026-11-02)
+
+El instalador guiado ahora realiza `pip check` después de instalar las
+dependencias, comprueba que PyTorch tenga runtime CUDA **13.2** y verifica
+que los módulos de entrenamiento (Transformers, datasets, Accelerate,
+PEFT, TRL y Safetensors) se puedan importar. Para QLoRA confirma además
+que el paquete bitsandbytes esté instalado; **esto no demuestra** que
+bitsandbytes funcione en la RTX 5060.
+
+Si alguna comprobación falla, la instalación se marca como fallida y
+Fresita intenta revertir **únicamente el entorno nuevo** creado en ese
+intento. No modifica entornos anteriores, pesos ni datasets. Esta
+validación no descarga modelos, no requiere GPU física y no sustituye
+la prueba de LoRA/QLoRA en Windows 11 con CUDA real.

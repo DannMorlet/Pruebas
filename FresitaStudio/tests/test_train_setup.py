@@ -7,7 +7,7 @@ import threading
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fresita_train_setup import build_setup_plan, run_setup, SetupCancelled, TORCH_INDEX
+from fresita_train_setup import build_setup_plan, run_setup, SetupCancelled, TORCH_INDEX, POST_INSTALL_CHECK
 
 class SetupTests(unittest.TestCase):
     def setUp(self):
@@ -33,7 +33,7 @@ class SetupTests(unittest.TestCase):
     def test_no_modifica_nada_al_planear(self):
         plan=self.plan()
         self.assertFalse(plan["venv"].exists())
-        self.assertEqual(len(plan["commands"]),4)
+        self.assertEqual(len(plan["commands"]),6)
     def test_usa_python312_x64_y_cu132_oficial(self):
         plan=self.plan()
         self.assertIn("-3.12",plan["commands"][0][1])
@@ -41,13 +41,13 @@ class SetupTests(unittest.TestCase):
         self.assertIn("torch==2.14.1",plan["commands"][2][1])
     def test_pip_sin_shell_ni_codigo_arbitrario(self):
         plan=self.plan()
-        for _,command in plan["commands"][2:]:
+        for _,command in plan["commands"][2:4]:
             self.assertIn("--isolated",command)
             self.assertIn("--only-binary=:all:",command)
             self.assertIn("--no-input",command)
         self.assertNotIn("unsloth",str(plan["commands"]).lower())
     def test_qlora_incluye_bitsandbytes(self):
-        self.assertIn("bitsandbytes",self.plan(True)["commands"][-1][1])
+        self.assertIn("bitsandbytes",self.plan(True)["commands"][4][1])
         self.assertNotIn("bitsandbytes",str(self.plan(False)["commands"]))
     def test_instalacion_completa_mock(self):
         seen=[]
@@ -55,8 +55,8 @@ class SetupTests(unittest.TestCase):
         result=run_setup(self.plan(),runner=self.fake_runner(seen),
                          on_stage=status.append,platform="nt")
         self.assertTrue(result["ok"])
-        self.assertEqual(len(seen),4)
-        self.assertEqual(len(status),4)
+        self.assertEqual(len(seen),6)
+        self.assertEqual(len(status),6)
         self.assertTrue((self.root/".venv"/"Scripts"/"python.exe").is_file())
         self.assertFalse((self.root/".venv"/".fresita-setup-in-progress").exists())
     def test_fallo_revierte_solo_entorno_nuevo(self):
@@ -98,6 +98,26 @@ class SetupTests(unittest.TestCase):
     def test_rechaza_modo_invalido(self):
         with self.assertRaises(ValueError):
             self.plan("QLoRA")
+    def test_verifica_conflictos_antes_de_finalizar(self):
+        commands=self.plan()["commands"]
+        self.assertEqual(commands[-2][1][-3:],["pip","--isolated","check"])
+        self.assertIn("importlib.import_module",commands[-1][1][-1])
+        self.assertIn("torch.version.cuda != '13.2'",POST_INSTALL_CHECK)
+    def test_qlora_verifica_bitsandbytes_sin_cargar_gpu(self):
+        commands=self.plan(True)["commands"]
+        self.assertEqual(len(commands),8)
+        self.assertIn("bitsandbytes",commands[-2][1][-1])
+        self.assertNotIn("import bitsandbytes",commands[-2][1][-1])
+    def test_fallo_pip_check_revierte_venv(self):
+        seen=[]
+        with self.assertRaisesRegex(RuntimeError,"Verificar conflictos"):
+            run_setup(self.plan(),runner=self.fake_runner(seen,fail_at=5),platform="nt")
+        self.assertFalse((self.root/".venv").exists())
+    def test_fallo_imports_revierte_venv(self):
+        seen=[]
+        with self.assertRaisesRegex(RuntimeError,"Comprobar CUDA"):
+            run_setup(self.plan(),runner=self.fake_runner(seen,fail_at=6),platform="nt")
+        self.assertFalse((self.root/".venv").exists())
     def test_requiere_archivo_de_dependencias(self):
         (self.bundle/"requirements-train.txt").unlink()
         with self.assertRaises(FileNotFoundError):
