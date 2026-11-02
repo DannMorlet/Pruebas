@@ -18,6 +18,7 @@ from fresita_quality import evaluate_predictions, save_quality_report
 from fresita_predict import generate_predictions, read_cases, local_server
 from fresita_speed import benchmark_local
 from fresita_pid import discover_server_pid
+from fresita_process_tree import discover_possible_children
 
 BG="#110F18"; PANEL="#221D2B"; PINK="#F57CAD"; TEXT="#FFF4FB"; MUTED="#B8ABBF"
 FONT="Segoe UI"
@@ -180,7 +181,7 @@ class Fresita(tk.Tk):
             self.field(c,"SERVIDOR LOCAL (SÓLO 127.0.0.1)",self.endpoint)
             self.field(c,"MODELO CARGADO EN SERVIDOR LOCAL",self.model)
             self.field(c,"PID DEL SERVIDOR (OPCIONAL; VRAM Y RAM POR PROCESO)",self.server_pid)
-            self.button(c,"Detectar PID del servidor local",self.detect_pid)
+            self.button(c,"Detectar PID y posibles procesos secundarios",self.detect_pid)
             self.field(c,"BENCHMARK JSONL (PREGUNTA, REFERENCIA, CATEGORIA)",self.benchmark_path)
             self.button(c,"Elegir benchmark",self.choose_benchmark)
             self.button(c,"Generar, medir velocidad y evaluar (local)",self.start_benchmark,True)
@@ -326,7 +327,8 @@ class Fresita(tk.Tk):
         self.status.set("Buscando proceso que escucha en el puerto local...")
         def worker():
             pid = discover_server_pid(endpoint)
-            self.events.put(("pid_discovered", (endpoint, pid)))
+            children = discover_possible_children(pid) if pid is not None else None
+            self.events.put(("pid_discovered", (endpoint, pid, children)))
         threading.Thread(target=worker, daemon=True).start()
 
     def start_benchmark(self):
@@ -513,14 +515,17 @@ class Fresita(tk.Tk):
                 kind,data=self.events.get_nowait()
                 if kind=="gpu":self.gpu.set(data)
                 if kind=="pid_discovered":
-                    endpoint, pid = data
+                    endpoint, pid, children = data
                     if endpoint != self.endpoint.get().strip():
                         self.status.set("Cambió el servidor: se descartó el PID anterior.")
                     elif pid is None:
                         self.status.set("PID no disponible o ambiguo. Puedes escribirlo manualmente.")
                     else:
                         self.server_pid.set(str(pid))
-                        self.status.set(f"PID detectado: {pid}. Verifica que corresponda al servidor de IA.")
+                        info = (" Posibles secundarios: " + ", ".join(map(str, children))
+                                if children else (" No se observaron hijos." if children == []
+                                                  else " Hijos: N/D."))
+                        self.status.set(f"Listener PID {pid}." + info + " No se atribuye RAM/VRAM a los hijos.")
                 if kind=="log":
                     self.logs.append(data)
                     if hasattr(self,"console") and self.console.winfo_exists():
