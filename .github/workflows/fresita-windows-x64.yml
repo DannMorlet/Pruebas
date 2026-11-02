@@ -25,11 +25,16 @@ jobs:
           python-version: '3.12'
           architecture: x64
       - name: Pruebas sin CUDA
+        shell: pwsh
         run: |
           python -c "import struct; assert struct.calcsize('P') == 8"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m compileall -q .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m unittest discover -s tests -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -c "import workers.train_lora; print('Worker importado sin cargar CUDA')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Construir Fresita.exe
         shell: pwsh
         run: |
