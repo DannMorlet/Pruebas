@@ -80,7 +80,7 @@ class ResumeTests(unittest.TestCase):
             prepare_training_run(self.cfg)
 
     def test_rechaza_versiones_con_datos_inseguros(self):
-        for invalid in ({"torch":"x\\nTOKEN_PRIVADO"},{"torch":""},
+        for invalid in ({"torch":"x"+chr(10)+"TOKEN_PRIVADO"},{"torch":""},
                         {"torch":None},{"clave privada":"1"}):
             with self.subTest(invalid=invalid):
                 with self.assertRaises(ValueError):
