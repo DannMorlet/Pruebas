@@ -94,13 +94,27 @@ class Fresita(tk.Tk):
         bar.pack(fill="x",padx=25,pady=10)
         tk.Label(bar,textvariable=self.gpu,bg=PANEL,fg="#B2E5C1",
                  font=(FONT,9),padx=13,pady=9).pack(side="right")
-        self.page=tk.Frame(main,bg=BG)
-        self.page.pack(fill="both",expand=True,padx=28,pady=10)
+        viewport=tk.Frame(main,bg=BG)
+        viewport.pack(fill="both",expand=True,padx=28,pady=10)
+        self.page_canvas=tk.Canvas(viewport,bg=BG,highlightthickness=0)
+        scrollbar=tk.Scrollbar(viewport,orient="vertical",command=self.page_canvas.yview)
+        self.page_canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right",fill="y")
+        self.page_canvas.pack(side="left",fill="both",expand=True)
+        self.page=tk.Frame(self.page_canvas,bg=BG)
+        self.page_window=self.page_canvas.create_window((0,0),window=self.page,anchor="nw")
+        self.page.bind("<Configure>",lambda _e:self.page_canvas.configure(
+            scrollregion=self.page_canvas.bbox("all")))
+        self.page_canvas.bind("<Configure>",lambda e:self.page_canvas.itemconfigure(
+            self.page_window,width=e.width))
+        self.page_canvas.bind("<MouseWheel>",lambda e:self.page_canvas.yview_scroll(
+            -1 if e.delta>0 else 1,"units"))
         self.status=tk.StringVar(value="Lista · Los modelos se ejecutan sólo cuando los solicitas")
         tk.Label(main,textvariable=self.status,bg="#19151F",fg=MUTED,
                  anchor="w",padx=25,pady=7,font=(FONT,9)).pack(side="bottom",fill="x")
 
     def clear(self):
+        self.page_canvas.yview_moveto(0)
         for w in self.page.winfo_children():w.destroy()
 
     def card(self):
