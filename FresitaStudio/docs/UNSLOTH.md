@@ -30,3 +30,30 @@ Unsloth que sólo invoque el worker anterior.
 
 La CI de Windows comprueba el parser y el comando de diagnóstico con
 respuestas simuladas; **no importa Unsloth ni ejecuta CUDA**.
+
+## Instalación guiada en entorno independiente (2026-11-02)
+
+**Nuevo:** botón **Preparar Unsloth aislado (experimental)** en Entrenar.
+Sigue el procedimiento de Unsloth Core para Windows publicado en su
+[README oficial](https://github.com/unslothai/unsloth): Python **3.13 x64**,
+`uv venv`, instalación de **torchao primero** y
+`uv pip install unsloth --torch-backend=auto`.
+
+Requisitos previos: instalar Python 3.13 y `uv` por separado (Fresita no
+los instala globalmente). Con autorización explícita, crea
+`Documentos/Fresita Studio/.venv-unsloth` y descarga dependencias.
+El entorno existente `.venv` de TRL/PEFT queda intacto. No descarga pesos
+ni ejecuta scripts remotos mediante PowerShell. Comprueba dependencias con
+`uv pip check`, importación de PyTorch, versión CUDA del wheel y metadatos
+de paquetes; **no importa Unsloth ni ejecuta kernels**. Si falla o se cancela,
+intenta retirar únicamente el entorno nuevo identificado por un marcador.
+Nunca sobrescribe un entorno Unsloth ya existente.
+
+Para comprobarlo pulsa **Comprobar Unsloth aislado (sin instalar)**. La
+opción antigua comprueba `.venv` y se conserva. El entrenamiento de la GUI
+continúa en `.venv` con TRL/PEFT, no se ha añadido un backend de entrenamiento
+Unsloth sin validación real.
+
+**Pendiente GPU física:** instalación completa de dependencias, importación
+de Unsloth, prueba mínima CUDA/Blackwell, VRAM y reversión tras errores reales.
+CI prueba planes y rollback con procesos simulados; no instala uv ni Unsloth.

@@ -107,7 +107,7 @@ def _run_command(command, cancel):
     env = os.environ.copy()
     # El entorno de usuario no debe cambiar el índice o inyectar rutas Python.
     for name in list(env):
-        if name.upper().startswith("PIP_") or name.upper() in ("PYTHONPATH", "PYTHONHOME"):
+        if name.upper().startswith(("PIP_", "UV_")) or name.upper() in ("PYTHONPATH", "PYTHONHOME"):
             env.pop(name, None)
     flags = (getattr(subprocess, "CREATE_NO_WINDOW", 0) |
              getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
