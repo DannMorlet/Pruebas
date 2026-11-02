@@ -119,3 +119,13 @@ con `{"qlora": false}` (o `true` para QLoRA) y ejecuta:
 ```
 Este comando no entrena ni carga pesos. Si pasa, aún falta validar un
 entrenamiento pequeño y el consumo real en la RTX 5060 de 8 GB.
+
+## Diagnóstico de errores de memoria durante LoRA/QLoRA
+Si la carga del modelo, preparación, entrenamiento o evaluación fallan por un error
+reconocible de **VRAM CUDA**, Fresita emite una línea `FRESITA_DIAGNOSTICO`
+con etapa, código `CUDA_SIN_VRAM` y pasos de recuperación en español.
+Si Python informa `MemoryError`, indica `RAM_AGOTADA`. No reintenta ni
+modifica automáticamente la receta, la longitud de contexto o los pesos.
+El diagnóstico no incluye rutas ni textos privados; el traceback estándar del
+worker sigue disponible para depuración **sólo en el equipo local**.
+Una prueba CI con errores simulados no valida la recuperación física de CUDA.
