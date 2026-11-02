@@ -12,6 +12,7 @@ from fresita_core import validate_eval_pair, evaluation_summary
 from fresita_metrics import append_metrics, evaluation_fingerprints
 from fresita_training_diagnostics import run_training_stage
 from fresita_checkpoints import sft_training_kwargs
+from fresita_resume import prepare_training_run
 
 def main():
     parser=argparse.ArgumentParser()
@@ -44,6 +45,9 @@ def main():
         eval_ds=load_dataset("json",data_files=cfg["eval_dataset"],split="train")
         if "text" not in eval_ds.column_names:
             raise ValueError("Validación sin columna text")
+    resume_path=prepare_training_run(cfg)
+    if resume_path:
+        print("REANUDACIÓN VALIDADA: checkpoint explícito y receta coincidente",flush=True)
     dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
     kwargs={"dtype":dtype,"trust_remote_code":False}
     if cfg.get("qlora"):
@@ -77,7 +81,11 @@ def main():
     trainer=run_training_stage("preparacion",SFTTrainer,model=model,args=opts,train_dataset=ds,
         eval_dataset=eval_ds,processing_class=tok,peft_config=peft,
         callbacks=[HistoryCallback()])
-    run_training_stage("entrenamiento",trainer.train)
+    if resume_path:
+        run_training_stage("entrenamiento",trainer.train,
+                           resume_from_checkpoint=str(resume_path))
+    else:
+        run_training_stage("entrenamiento",trainer.train)
     trainer.save_model(cfg["output"])
     tok.save_pretrained(cfg["output"])
     if eval_ds is not None:
