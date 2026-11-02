@@ -65,7 +65,7 @@ def summarize_speed(durations, token_counts):
         "muestras_con_usage": len(known),
         "tokens_salida_reportados": sum(known) if complete else None,
         "tokens_salida_por_s_extremo_a_extremo": round(sum(known)/total, 3) if complete else None,
-        "advertencia": "Tokens/s incluye prefill y HTTP; no es velocidad pura de decodificacion. No mide VRAM."
+        "advertencia": "Tokens/s incluye prefill y HTTP; no es velocidad pura de decodificacion. La VRAM se reporta por separado, no como consumo exclusivo del modelo."
     }
 
 def benchmark_local(dataset, output_dir, *, workspace, endpoint, model,
