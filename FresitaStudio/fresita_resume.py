@@ -11,7 +11,8 @@ from fresita_checkpoints import checkpoint_settings
 
 _MANIFEST = "fresita_checkpoint_manifest.json"
 _FIELDS = ("model", "qlora", "rank", "steps", "lr", "checkpoint_interval")
-_REQUIRED = ("trainer_state.json", "optimizer.pt", "scheduler.pt", "rng_state.pth")
+_REQUIRED = ("trainer_state.json", "optimizer.pt", "scheduler.pt", "rng_state.pth",
+             "adapter_config.json", "adapter_model.safetensors")
 
 
 def _file_sha256(path):
@@ -97,8 +98,22 @@ def prepare_training_run(cfg):
         raise ValueError("El checkpoint supera los pasos de la receta.")
     for filename in _REQUIRED:
         file = checkpoint / filename
+        if file.is_symlink():
+            raise ValueError("Checkpoint no confiable: contiene enlaces simbólicos.")
         if not file.is_file() or file.stat().st_size == 0:
-            raise ValueError("Checkpoint incompleto: falta estado del entrenador.")
+            raise ValueError("Checkpoint incompleto: falta estado o adaptador LoRA.")
+    adapter_file = checkpoint / "adapter_config.json"
+    if adapter_file.stat().st_size > 64 * 1024:
+        raise ValueError("Configuración del adaptador demasiado grande.")
+    try:
+        adapter = json.loads(adapter_file.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise ValueError("Configuración del adaptador ilegible.") from exc
+    if (not isinstance(adapter, dict) or adapter.get("peft_type") != "LORA"
+            or type(adapter.get("r")) is not int or adapter["r"] != cfg["rank"]):
+        raise ValueError("El adaptador LoRA no coincide con el rango de la receta.")
+    if (checkpoint / "adapter_model.safetensors").stat().st_size < 16:
+        raise ValueError("Pesos del adaptador vacíos o truncados.")
     state_file = checkpoint / "trainer_state.json"
     if state_file.stat().st_size > 2 * 1024 * 1024:
         raise ValueError("Estado de entrenador demasiado grande.")
