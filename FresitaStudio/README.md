@@ -98,3 +98,20 @@ Si un PID no aparece, Fresita muestra «no confirmado», nunca «no usa GPU».
 Una coincidencia sólo confirma que `nvidia-smi` enumeró el PID en esa consulta:
 no identifica automáticamente el proceso que contiene los pesos ni prueba
 uso exclusivo de la GPU. El análisis es puntual y no lee datos privados.
+
+
+## Diagnóstico previo de CUDA (sin descargar modelos)
+Antes de cargar pesos, el worker comprueba Python x64, dependencias instaladas,
+disponibilidad de CUDA y VRAM total detectada. Para QLoRA exige `bitsandbytes`;
+que esté instalado **no garantiza** que funcione con el controlador y la versión
+de PyTorch. Si falta una dependencia, falla antes de descargar el modelo.
+El diagnóstico sólo devuelve versiones, nombre de GPU, memoria total y errores:
+no lee datasets ni guarda secretos.
+
+Desde el entorno de entrenamiento, crea un archivo de configuración JSON
+con `{"qlora": false}` (o `true` para QLoRA) y ejecuta:
+```powershell
+& "$HOME\Documents\Fresita Studio\.venv\Scripts\python.exe" workers/train_lora.py --config receta.json --preflight
+```
+Este comando no entrena ni carga pesos. Si pasa, aún falta validar un
+entrenamiento pequeño y el consumo real en la RTX 5060 de 8 GB.
