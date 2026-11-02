@@ -39,7 +39,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install "pyinstaller>=6.15,<7"
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name Fresita --add-data "workers;workers" --add-data "fresita_core.py;." --add-data "fresita_metrics.py;." --add-data "fresita_train_preflight.py;." fresita.py
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name Fresita --add-data "workers;workers" --add-data "fresita_core.py;." --add-data "fresita_metrics.py;." --add-data "fresita_train_preflight.py;." --add-data "fresita_checkpoints.py;." fresita.py
           if (!(Test-Path dist/Fresita.exe)) { throw "Fresita.exe ausente" }
       - name: Comprobar arquitectura x64
         shell: pwsh
