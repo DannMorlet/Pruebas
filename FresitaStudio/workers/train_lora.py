@@ -14,8 +14,17 @@ from fresita_metrics import append_metrics, evaluation_fingerprints
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--config",required=True)
+    parser.add_argument("--preflight",action="store_true",help="Revisar CUDA y dependencias sin cargar modelos")
     args=parser.parse_args()
     cfg=json.loads(Path(args.config).read_text(encoding="utf-8"))
+    from fresita_train_preflight import inspect_environment
+    report=inspect_environment(qlora=bool(cfg.get("qlora")))
+    print("DIAGNÓSTICO CUDA:",json.dumps(report,ensure_ascii=False),flush=True)
+    if not report["ok"]:
+        raise RuntimeError("Entorno de entrenamiento incompleto: "+"; ".join(report["errores"]))
+    if args.preflight:
+        print("DIAGNÓSTICO COMPLETADO: no se cargaron pesos ni datasets",flush=True)
+        return
     import torch
     from datasets import load_dataset
     from transformers import AutoTokenizer,AutoModelForCausalLM,BitsAndBytesConfig,TrainerCallback
