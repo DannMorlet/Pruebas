@@ -41,6 +41,7 @@ class UnslothSetupTests(unittest.TestCase):
         commands = self.plan()["commands"]
         self.assertIn("-3.13", commands[0][1])
         self.assertIn("--no-python-downloads", commands[1][1])
+        self.assertIn("--allow-existing", commands[1][1])
         self.assertEqual(commands[1][1][:2], ["uv", "venv"])
 
     def test_torchao_antes_de_unsloth(self):
