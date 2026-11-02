@@ -13,7 +13,8 @@ from tkinter import filedialog, messagebox, ttk
 from urllib.request import urlopen
 
 from fresita_llama import latest_compatible_release, install_release, installed_server, gpu_compatibility, start_server
-from fresita_updates import load_settings, save_settings, update_message
+from fresita_updates import load_settings, save_settings, load_auto_install, save_auto_install, update_message
+from fresita_update_center import run_updates, rollback, active_python, active_llama, active_tag
 from fresita_train_check import check_training_environment, format_preflight_report
 from fresita_unsloth import check_unsloth, format_unsloth_report
 from fresita_unsloth_setup import build_unsloth_setup_plan, run_unsloth_setup
@@ -67,13 +68,17 @@ class Fresita(tk.Tk):
         self.llama_info=tk.StringVar(value="Motor aún no comprobado")
         self.llama_autocheck=tk.BooleanVar(value=load_settings()["buscar_al_abrir"])
         self.llama_busy=False
+        self.updates_busy=False
+        self.updates_cancel=threading.Event()
+        self.auto_install=tk.BooleanVar(value=load_auto_install())
+        self.updates_info=tk.StringVar(value="Actualizaciones: pendientes de revisar")
         self.gpu=tk.StringVar(value="GPU: no consultada")
         self.shell()
         self.show("Inicio")
         self.after(150,self.pump)
         self.after(200,self.scan_gpu)
         if self.llama_autocheck.get():
-            self.after(1200,lambda:self.check_llama(silent=True) if self.llama_autocheck.get() else None)
+            self.after(1600,lambda:self.run_update_center(auto=True) if self.llama_autocheck.get() else None)
         self.protocol("WM_DELETE_WINDOW",self.close)
 
     def label(self,parent,value,size=11,color=TEXT,bold=False):
@@ -103,7 +108,7 @@ class Fresita(tk.Tk):
         sidebar.pack(side="left",fill="y");sidebar.pack_propagate(False)
         self.label(sidebar,"   🍓 FRESITA",20,PINK,True)
         self.label(sidebar,"      AI TRAINING STUDIO",9,MUTED,True)
-        for name in ("Inicio","Modelos","Datasets","Entrenar","Crear IA","Experimentos","Evaluar IA","Motor llama.cpp","Actividad"):
+        for name in ("Inicio","Modelos","Datasets","Entrenar","Crear IA","Experimentos","Evaluar IA","Motor llama.cpp","Actualizaciones","Actividad"):
             self.button(sidebar,"  "+name,lambda n=name:self.show(n))
         self.label(sidebar,"   Local · Windows x64",9,MUTED)
         main=tk.Frame(self,bg=BG)
@@ -261,6 +266,28 @@ class Fresita(tk.Tk):
             self.button(c,"Iniciar llama-server (127.0.0.1:8080)",self.launch_llama)
             self.button(c,"Detener servidor iniciado por Fresita",self.stop_llama)
             self.label(c,"Se inicia con 2048 tokens de contexto y 20 capas GPU; puede variar el consumo de VRAM.",9,MUTED)
+        elif name=="Actualizaciones":
+            c=self.card()
+            self.label(c,"Centro de actualizaciones automático",16,PINK,True)
+            self.label(c,"Busca al abrir y actualiza únicamente entornos compatibles. No toca drivers ni pesos.",10,MUTED)
+            tk.Checkbutton(c,text="Buscar actualizaciones al abrir (activado)",
+                           variable=self.llama_autocheck,command=self.save_llama_settings,
+                           bg=PANEL,fg=TEXT,selectcolor="#312A3A",
+                           activebackground=PANEL,activeforeground=TEXT).pack(anchor="w",pady=4)
+            tk.Checkbutton(c,text="Instalar componentes compatibles automáticamente (activado)",
+                           variable=self.auto_install,command=self.save_update_preferences,
+                           bg=PANEL,fg=TEXT,selectcolor="#312A3A",
+                           activebackground=PANEL,activeforeground=TEXT).pack(anchor="w",pady=4)
+            self.label(c,"Requiere Python 3.12 para TRL/PEFT, Python 3.13 y uv para Unsloth y un driver NVIDIA compatible. Las descargas pueden ocupar varios GB.",9,MUTED)
+            tk.Label(c,textvariable=self.updates_info,bg=PANEL,fg="#B2E5C1",
+                     font=(FONT,10),anchor="w",justify="left",wraplength=720).pack(fill="x",pady=8)
+            self.button(c,"Comprobar e instalar componentes ahora",lambda:self.run_update_center(auto=False),True)
+            self.button(c,"Cancelar cuando termine la etapa actual",self.cancel_updates)
+            self.label(c,"Volver a la versión anterior sin eliminar el entorno actual:",10,MUTED)
+            self.button(c,"Revertir llama.cpp",lambda:self.rollback_update("llama"))
+            self.button(c,"Revertir PyTorch / TRL / PEFT",lambda:self.rollback_update("trl"))
+            self.button(c,"Revertir Unsloth",lambda:self.rollback_update("unsloth"))
+            self.label(c,"CUDA: las bibliotecas del motor vienen con llama.cpp; PyTorch usa su wheel cu132. No se instala CUDA Toolkit global ni el driver NVIDIA.",9,MUTED)
         elif name=="Actividad":
             c=self.card()
             self.button(c,"Detener entrenamiento",self.stop)
@@ -269,6 +296,55 @@ class Fresita(tk.Tk):
             self.console.pack(fill="both",expand=True)
             self.console.insert("1.0","\n".join(self.logs[-400:]))
             self.console.configure(state="disabled")
+
+    def save_update_preferences(self):
+        try:
+            save_auto_install(self.auto_install.get())
+        except OSError as exc:
+            messagebox.showerror("Actualizaciones",str(exc))
+
+    def run_update_center(self,auto=False):
+        if self.updates_busy or self.setup_busy or self.llama_busy:
+            return
+        if self.proc and self.proc.poll() is None:
+            self.updates_info.set("Entrenamiento activo; no se actualizarán sus dependencias.")
+            return
+        if not auto and not messagebox.askyesno("Actualizaciones",
+            "¿Instalar automáticamente versiones compatibles en carpetas independientes? "
+            "Puede descargar varios GB; no cambia drivers ni datasets."):
+            return
+        self.updates_busy=True
+        self.updates_cancel.clear()
+        self.updates_info.set("Comprobando versiones y compatibilidad sin bloquear la interfaz...")
+        def work():
+            try:
+                summary=run_updates(cancel=self.updates_cancel,
+                    bundle_root=Path(getattr(sys,"_MEIPASS",Path(__file__).resolve().parent)),
+                    force=not auto,
+                    progress=lambda stage:self.events.put(("update_progress",stage)))
+                self.events.put(("update_done",summary))
+            except Exception:
+                self.events.put(("update_done",["No se pudo completar la comprobación; se conservaron versiones anteriores."]))
+        threading.Thread(target=work,daemon=True).start()
+
+    def cancel_updates(self):
+        self.updates_cancel.set()
+        self.updates_info.set("Cancelación solicitada; se conservará el último entorno activo.")
+
+    def rollback_update(self,component):
+        if self.updates_busy or self.setup_busy or self.proc and self.proc.poll() is None:
+            messagebox.showwarning("Ocupado","No se puede revertir durante instalación o entrenamiento.")
+            return
+        if component=="llama" and self.llama_proc and self.llama_proc.poll() is None:
+            messagebox.showwarning("Servidor activo","Detén primero llama-server.")
+            return
+        if not messagebox.askyesno("Volver a versión anterior","¿Restaurar el puntero de la versión anterior sin borrar ningún entorno?"):
+            return
+        try:
+            target=rollback(component)
+            self.updates_info.set(f"Restaurado {component}: {target}. Las versiones permanecen en disco.")
+        except (OSError,ValueError) as exc:
+            messagebox.showwarning("No se pudo revertir",str(exc))
 
     def save_llama_settings(self):
         try:
@@ -293,7 +369,7 @@ class Fresita(tk.Tk):
         threading.Thread(target=work,daemon=True).start()
 
     def install_llama(self):
-        if self.llama_busy:return
+        if self.llama_busy or self.updates_busy:return
         if not messagebox.askyesno("Descarga llama.cpp",
             "¿Descargar desde GitHub el motor y las bibliotecas CUDA 13.4? Aproximadamente 600 MB. No se instalarán controladores."):return
         self.llama_busy=True
@@ -321,7 +397,7 @@ class Fresita(tk.Tk):
         if self.llama_proc and self.llama_proc.poll() is None:
             messagebox.showinfo("llama.cpp","Ya está iniciado desde Fresita.");return
         try:
-            pair=installed_server()
+            pair=active_llama()
             if not pair:raise ValueError("Instala primero llama.cpp CUDA 13.4")
             if not messagebox.askyesno("Abrir servidor local",
                                       "¿Iniciar llama.cpp y cargar este GGUF usando la GPU?"):return
@@ -660,7 +736,7 @@ class Fresita(tk.Tk):
         qlora=self.mode.get().startswith("QLoRA")
         def work():
             try:
-                report=check_training_environment(qlora)
+                report=check_training_environment(qlora,python_override=active_python("trl"))
                 self.events.put(("train_check_result",report))
             except (OSError,ValueError,RuntimeError,TimeoutError) as exc:
                 self.events.put(("train_check_error",str(exc)))
@@ -709,14 +785,14 @@ class Fresita(tk.Tk):
         self.status.set("Revisando Unsloth y CUDA sin instalar paquetes...")
         def work():
             try:
-                report=check_unsloth(environment=environment)
+                report=check_unsloth(environment=environment,python_override=active_python("unsloth") if environment==".venv-unsloth" else active_python("trl"))
                 self.events.put(("unsloth_check_result",report))
             except (OSError,ValueError,RuntimeError,TimeoutError) as exc:
                 self.events.put(("unsloth_check_error",str(exc)))
         threading.Thread(target=work,daemon=True).start()
 
     def train(self):
-        if self.setup_busy:
+        if self.setup_busy or self.updates_busy:
             messagebox.showwarning("Instalación activa","Espera a terminar la instalación.")
             return
         if self.proc and self.proc.poll() is None:
@@ -753,7 +829,7 @@ class Fresita(tk.Tk):
                 cfg["validation_count"]=counts["validacion_unicos"]
             recipe=save_recipe(cfg)
             env_name=".venv-unsloth" if backend=="unsloth" else ".venv"
-            python=(BASE/env_name/"Scripts"/"python.exe")
+            python=active_python("unsloth" if backend=="unsloth" else "trl")
             if not python.exists():
                 raise ValueError("Prepara primero el entorno "+env_name+" con Python x64")
             script=Path(getattr(sys,"_MEIPASS",Path(__file__).resolve().parent))/"workers"/"train_lora.py"
@@ -790,6 +866,13 @@ class Fresita(tk.Tk):
             while True:
                 kind,data=self.events.get_nowait()
                 if kind=="gpu":self.gpu.set(data)
+                if kind=="update_progress":
+                    self.updates_info.set(str(data)[:190])
+                    self.status.set("Actualizando componentes compatibles...")
+                if kind=="update_done":
+                    self.updates_busy=False
+                    self.updates_info.set("\\n".join(data))
+                    self.status.set("Revisión de actualizaciones terminada")
                 if kind=="setup_stage":
                     self.status.set("Instalando: "+data)
                 if kind=="setup_done":
@@ -911,7 +994,7 @@ class Fresita(tk.Tk):
         self.after(150,self.pump)
 
     def close(self):
-        if self.setup_busy:
+        if self.setup_busy or self.updates_busy:
             messagebox.showwarning("Instalación activa",
                 "Cancela la instalación y espera a que termine antes de cerrar Fresita.")
             return

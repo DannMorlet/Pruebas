@@ -40,7 +40,7 @@ def save_settings(autocheck, root=None):
             prefix=".actualizaciones-", suffix=".tmp", delete=False
         ) as f:
             tmp = Path(f.name)
-            json.dump({"buscar_al_abrir": autocheck}, f, ensure_ascii=False)
+            json.dump({"buscar_al_abrir": autocheck, "instalar_automaticamente": load_auto_install(root)}, f, ensure_ascii=False)
             f.write("\n")
         os.replace(tmp, path)
     finally:
@@ -62,3 +62,34 @@ def update_message(installed, available):
     if current == latest:
         return f"Motor al día: {installed}"
     return f"Versión local {installed} más reciente que la consultada ({available})"
+
+def load_auto_install(root=None):
+    """Preferencia explícita para este producto: actualizar componentes validados."""
+    try:
+        data=json.loads(settings_path(root).read_text(encoding="utf-8"))
+        value=data.get("instalar_automaticamente")
+        if type(value) is bool:
+            return value
+    except (OSError,ValueError,TypeError,AttributeError):
+        pass
+    return True
+
+def save_auto_install(enabled,root=None):
+    if type(enabled) is not bool:
+        raise ValueError("La preferencia de instalación debe ser booleana")
+    path=settings_path(root)
+    path.parent.mkdir(parents=True,exist_ok=True)
+    tmp=None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",encoding="utf-8",dir=path.parent,
+            prefix=".actualizaciones-",suffix=".tmp",delete=False
+        ) as file:
+            tmp=Path(file.name)
+            json.dump({"buscar_al_abrir":load_settings(root)["buscar_al_abrir"],
+                       "instalar_automaticamente":enabled},file,ensure_ascii=False)
+            file.write("\n")
+        os.replace(tmp,path)
+    finally:
+        if tmp is not None:tmp.unlink(missing_ok=True)
+    return path

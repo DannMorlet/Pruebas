@@ -294,3 +294,39 @@ con acumulación 4 para limitar VRAM; esto no garantiza caber en 8 GB.
 y entrenamiento LoRA/QLoRA en RTX 5060 8 GB, además de rendimiento,
 métricas y consumo de memoria. GitHub Actions comprueba lógica y
 empaquetado con pruebas sin CUDA, no ejecuta un entrenamiento físico.
+
+## 🍓 Centro de actualizaciones transaccional (2026-11-02)
+
+La pestaña **Actualizaciones** permite **buscar al abrir** y
+**instalar automáticamente componentes compatibles**, ambas activadas
+como preferencias iniciales, que puedes apagar en cualquier momento.
+Las instalaciones automáticas se espacian al menos 24 horas y se
+ejecutan en un hilo independiente. En Windows, Fresita intenta:
+
+- **llama.cpp**: motor y runtime CUDA 13.4 en carpeta versionada,
+  ZIP oficiales con verificación SHA-256; requiere driver R615+ para
+  la ruta automática. No modifica drivers ni CUDA Toolkit del sistema.
+- **PyTorch + Transformers + TRL + PEFT + bitsandbytes**: entorno
+  nuevo versionado con Python 3.12 x64, PyTorch 2.14.1 cu132
+  de la fuente oficial, verificación de imports, resolución de
+  dependencias y operación CUDA sencilla en la GPU real.
+- **Unsloth**: entorno nuevo independiente con Python 3.13 x64
+  y `uv`, fijando la versión recuperada de PyPI, verificación
+  `uv pip check`, imports y operación CUDA sencilla antes de activarlo.
+
+Si falta Python, `uv`, conexión o controlador compatible, se informa y se
+conserva la instalación anterior. La ruta nueva no sustituye ni borra
+`.venv` o `.venv-unsloth` heredados. Un registro atómico local en
+`config/componentes_activos.json` controla el entorno activo y anterior.
+Puedes pulsar **Revertir** sin reinstalar ni borrar archivos; no elimina
+datasets, pesos ni checkpoints. La operación GPU de prueba **no**
+demuestra todavía que LoRA/QLoRA o el modelo funcionen con la RTX 5060;
+las pruebas GitHub Actions simulan instalación y GPU sin acceso físico.
+
+**Límites:** la actualización automática de PyTorch sigue una
+**combinación curada** (2.14.1/cu132) hasta publicar otra compatible;
+no cambia aleatoriamente a una wheel `cu134` inexistente.
+Unsloth emplea el resolvedor oficial `uv --torch-backend=auto`,
+pero puede fallar en Windows nativo: se conserva el entorno anterior.
+No se instala globalmente CUDA Toolkit 13.4.3; llama.cpp incluye su
+runtime y PyTorch incluye el suyo.

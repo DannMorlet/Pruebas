@@ -40,14 +40,14 @@ def parse_preflight_output(output):
         raise ValueError("El reporte CUDA tiene un formato incompatible.")
     return report
 
-def check_training_environment(qlora=False, *, workspace=None, bundle_root=None, runner=None):
+def check_training_environment(qlora=False, *, workspace=None, bundle_root=None, runner=None, python_override=None):
     """Comprueba entorno Python de Fresita; no descarga ni ejecuta entrenamiento."""
     if type(qlora) is not bool:
         raise ValueError("El modo QLoRA debe ser booleano.")
     workspace = Path(workspace) if workspace is not None else BASE
     bundle_root = (Path(bundle_root) if bundle_root is not None else
                    Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)))
-    python = workspace / ".venv" / "Scripts" / "python.exe"
+    python = Path(python_override) if python_override is not None else workspace / ".venv" / "Scripts" / "python.exe"
     worker = bundle_root / "workers" / "train_lora.py"
     if not python.is_file():
         raise FileNotFoundError(

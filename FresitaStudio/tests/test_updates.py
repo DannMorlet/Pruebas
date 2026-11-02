@@ -54,3 +54,14 @@ class UpdateTests(unittest.TestCase):
         for tag in ("../b1", "v0.8.0", "b", "b1/"):
             with self.subTest(tag=tag),self.assertRaises(ValueError):
                 updates.update_message("b12048",tag)
+
+    def test_instalacion_automatica_configurable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertTrue(updates.load_auto_install(tmp))
+            updates.save_auto_install(False,tmp)
+            self.assertFalse(updates.load_auto_install(tmp))
+            updates.save_settings(False,tmp)
+            self.assertFalse(updates.load_auto_install(tmp))
+            self.assertFalse(updates.load_settings(tmp)["buscar_al_abrir"])
+            updates.save_auto_install(True,tmp)
+            self.assertTrue(updates.load_auto_install(tmp))

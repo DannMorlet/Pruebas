@@ -83,12 +83,12 @@ def parse_probe_output(output):
         raise ValueError("El reporte de Unsloth tiene formato incompatible.")
     return report
 
-def check_unsloth(*, workspace=None, runner=None, environment=".venv"):
+def check_unsloth(*, workspace=None, runner=None, environment=".venv", python_override=None):
     """Inspecciona metadatos locales y disponibilidad CUDA; nunca instala paquetes."""
     if environment not in (".venv", ".venv-unsloth"):
         raise ValueError("Selecciona un entorno Unsloth permitido por Fresita.")
     root = Path(workspace) if workspace is not None else BASE
-    python = root / environment / "Scripts" / "python.exe"
+    python = Path(python_override) if python_override is not None else root / environment / "Scripts" / "python.exe"
     if not python.is_file():
         raise FileNotFoundError(
             "No existe el entorno de entrenamiento de Fresita. "
