@@ -7,7 +7,8 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fresita_resume import prepare_training_run, recipe_fingerprint
+from fresita_resume import (prepare_training_run, recipe_fingerprint,
+                           runtime_fingerprint, installed_runtime_versions)
 
 
 class ResumeTests(unittest.TestCase):
@@ -43,6 +44,53 @@ class ResumeTests(unittest.TestCase):
         self.assertNotIn("Qwen", content)
         self.assertNotIn("Un ejemplo", content)
         self.assertEqual(len(recipe_fingerprint(self.cfg)), 64)
+
+    def test_manifiesto_v2_guarda_huella_sin_versiones_ni_datos(self):
+        versions={"torch":"2.14.1","trl":"0.25.0","cuda_build":"13.2","python":"3.12.12"}
+        prepare_training_run(self.cfg,runtime_versions=versions)
+        text=(self.output/"fresita_checkpoint_manifest.json").read_text()
+        stored=json.loads(text)
+        self.assertEqual(stored["version"],2)
+        self.assertEqual(stored["runtime_sha256"],runtime_fingerprint(versions))
+        self.assertNotIn("2.14.1",text)
+        self.assertNotIn(str(self.dataset),text)
+        self.assertNotIn("Qwen",text)
+
+    def test_reanuda_v2_con_mismo_entorno(self):
+        versions={"torch":"2.14.1","trl":"0.25.0","cuda_build":"13.2"}
+        prepare_training_run(self.cfg,runtime_versions=versions)
+        checkpoint=self.checkpoint()
+        self.cfg["resume_checkpoint"]=str(checkpoint)
+        self.assertEqual(prepare_training_run(self.cfg,runtime_versions=versions),
+                         checkpoint.resolve())
+
+    def test_rechaza_v2_si_cambia_trl(self):
+        versions={"torch":"2.14.1","trl":"0.25.0","cuda_build":"13.2"}
+        prepare_training_run(self.cfg,runtime_versions=versions)
+        checkpoint=self.checkpoint()
+        self.cfg["resume_checkpoint"]=str(checkpoint)
+        with self.assertRaisesRegex(ValueError,"versiones"):
+            prepare_training_run(self.cfg,runtime_versions={**versions,"trl":"0.26.0"})
+
+    def test_rechaza_v2_sin_versiones(self):
+        prepare_training_run(self.cfg,runtime_versions={"torch":"2.14.1"})
+        checkpoint=self.checkpoint()
+        self.cfg["resume_checkpoint"]=str(checkpoint)
+        with self.assertRaisesRegex(ValueError,"versiones"):
+            prepare_training_run(self.cfg)
+
+    def test_rechaza_versiones_con_datos_inseguros(self):
+        for invalid in ({"torch":"x\\nTOKEN_PRIVADO"},{"torch":""},
+                        {"torch":None},{"clave privada":"1"}):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    runtime_fingerprint(invalid)
+
+    def test_worker_registra_versiones_antes_de_reanudar(self):
+        worker=Path(__file__).resolve().parents[1]/"workers"/"train_lora.py"
+        source=worker.read_text(encoding="utf-8")
+        self.assertIn("installed_runtime_versions",source)
+        self.assertIn("runtime_versions=runtime_versions",source)
 
     def test_reanuda_con_estado_completo(self):
         prepare_training_run(self.cfg)

@@ -12,7 +12,7 @@ from fresita_core import validate_eval_pair, evaluation_summary
 from fresita_metrics import append_metrics, evaluation_fingerprints
 from fresita_training_diagnostics import run_training_stage
 from fresita_checkpoints import sft_training_kwargs
-from fresita_resume import prepare_training_run
+from fresita_resume import prepare_training_run, installed_runtime_versions
 
 def main():
     parser=argparse.ArgumentParser()
@@ -45,9 +45,17 @@ def main():
         eval_ds=load_dataset("json",data_files=cfg["eval_dataset"],split="train")
         if "text" not in eval_ds.column_names:
             raise ValueError("Validación sin columna text")
-    resume_path=prepare_training_run(cfg)
+    runtime_versions=installed_runtime_versions(bool(cfg.get("qlora")),
+                                                 cuda_build=torch.version.cuda)
+    resume_path=prepare_training_run(cfg,runtime_versions=runtime_versions)
     if resume_path:
-        print("REANUDACIÓN VALIDADA: checkpoint explícito y receta coincidente",flush=True)
+        manifest=Path(cfg["output"])/"fresita_checkpoint_manifest.json"
+        if json.loads(manifest.read_text(encoding="utf-8")).get("version")==1:
+            print("AVISO: checkpoint heredado sin huella de versiones. "
+                  "La compatibilidad del entorno NO se ha verificado.",flush=True)
+        else:
+            print("REANUDACIÓN VALIDADA: receta, datasets y versiones del entorno coinciden",
+                  flush=True)
     dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
     kwargs={"dtype":dtype,"trust_remote_code":False}
     if cfg.get("qlora"):

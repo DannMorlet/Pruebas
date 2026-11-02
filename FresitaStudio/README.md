@@ -254,3 +254,19 @@ lee versiones locales y disponibilidad CUDA en el entorno de entrenamiento.
 No modifica paquetes ni ejecuta entrenamiento Unsloth; el worker de
 entrenamiento sigue siendo TRL/PEFT. Véase
 [documentación y límites](docs/UNSLOTH.md).
+
+## Checkpoints y versiones del entorno (2026-11-02)
+
+Los **nuevos** entrenamientos con checkpoints guardan un manifiesto v2 que
+incluye SHA-256 de las versiones de Python, CUDA del wheel, PyTorch,
+Transformers, TRL, PEFT, Accelerate, Datasets, Safetensors y Tokenizers;
+QLoRA añade bitsandbytes. No se escriben rutas, pesos, modelos ni
+datasets en ese manifiesto. Al reanudar, Fresita rechaza cambios en
+las versiones detectadas antes de descargar pesos o iniciar TRL.
+
+Los manifiestos v1 creados antes de esta mejora siguen siendo aceptados
+con las validaciones anteriores, pero se muestra un **aviso explícito**
+de que no se ha comprobado la compatibilidad de versiones. No se
+reescriben ni migran checkpoints existentes. Una huella coincidente
+NO demuestra que CUDA pueda reanudar correctamente: sigue pendiente
+probar recuperación de optimizador y RNG en la RTX 5060 física.
