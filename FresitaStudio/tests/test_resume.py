@@ -31,6 +31,9 @@ class ResumeTests(unittest.TestCase):
             json.dumps({"global_step": step}), encoding="utf-8")
         for filename in ("optimizer.pt", "scheduler.pt", "rng_state.pth"):
             (folder / filename).write_bytes(b"estado")
+        (folder / "adapter_config.json").write_text(
+            json.dumps({"peft_type": "LORA", "r": self.cfg["rank"]}), encoding="utf-8")
+        (folder / "adapter_model.safetensors").write_bytes(b"adaptador_simulado_para_pruebas")
         return folder
 
     def test_crea_manifiesto_sin_datos_privados(self):
@@ -69,6 +72,56 @@ class ResumeTests(unittest.TestCase):
         (checkpoint / "optimizer.pt").unlink()
         self.cfg["resume_checkpoint"] = str(checkpoint)
         with self.assertRaisesRegex(ValueError, "incompleto"):
+            prepare_training_run(self.cfg)
+
+    def test_rechaza_adaptador_ausente(self):
+        prepare_training_run(self.cfg)
+        checkpoint = self.checkpoint()
+        (checkpoint / "adapter_model.safetensors").unlink()
+        self.cfg["resume_checkpoint"] = str(checkpoint)
+        with self.assertRaisesRegex(ValueError, "incompleto"):
+            prepare_training_run(self.cfg)
+
+    def test_rechaza_configuracion_adaptador_ausente(self):
+        prepare_training_run(self.cfg)
+        checkpoint = self.checkpoint()
+        (checkpoint / "adapter_config.json").unlink()
+        self.cfg["resume_checkpoint"] = str(checkpoint)
+        with self.assertRaisesRegex(ValueError, "incompleto"):
+            prepare_training_run(self.cfg)
+
+    def test_rechaza_rango_adaptador_incompatible(self):
+        prepare_training_run(self.cfg)
+        checkpoint = self.checkpoint()
+        (checkpoint / "adapter_config.json").write_text(
+            json.dumps({"peft_type": "LORA", "r": 16}), encoding="utf-8")
+        self.cfg["resume_checkpoint"] = str(checkpoint)
+        with self.assertRaisesRegex(ValueError, "no coincide"):
+            prepare_training_run(self.cfg)
+
+    def test_rechaza_adaptador_no_lora(self):
+        prepare_training_run(self.cfg)
+        checkpoint = self.checkpoint()
+        (checkpoint / "adapter_config.json").write_text(
+            json.dumps({"peft_type": "ADALORA", "r": 8}), encoding="utf-8")
+        self.cfg["resume_checkpoint"] = str(checkpoint)
+        with self.assertRaisesRegex(ValueError, "no coincide"):
+            prepare_training_run(self.cfg)
+
+    def test_rechaza_configuracion_adaptador_danada(self):
+        prepare_training_run(self.cfg)
+        checkpoint = self.checkpoint()
+        (checkpoint / "adapter_config.json").write_text("{no-es-json", encoding="utf-8")
+        self.cfg["resume_checkpoint"] = str(checkpoint)
+        with self.assertRaisesRegex(ValueError, "ilegible"):
+            prepare_training_run(self.cfg)
+
+    def test_rechaza_pesos_adaptador_truncados(self):
+        prepare_training_run(self.cfg)
+        checkpoint = self.checkpoint()
+        (checkpoint / "adapter_model.safetensors").write_bytes(b"x")
+        self.cfg["resume_checkpoint"] = str(checkpoint)
+        with self.assertRaisesRegex(ValueError, "truncados"):
             prepare_training_run(self.cfg)
 
     def test_rechaza_paso_distinto(self):
