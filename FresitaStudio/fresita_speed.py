@@ -71,9 +71,11 @@ def summarize_speed(durations, token_counts):
 def benchmark_local(dataset, output_dir, *, workspace, endpoint, model,
                     max_tokens=256, cancelled=None, progress=None,
                     requester=request_usage, clock=time.perf_counter,
-                    sampler_factory=ResourceSampler):
+                    sampler_factory=ResourceSampler, process_pid=None):
     """Predicciones privadas y reporte agregado; no deja reporte parcial al cancelar."""
     local_server(endpoint)
+    if process_pid is not None and (type(process_pid) is not int or process_pid <= 0):
+        raise ValueError("PID del servidor inválido")
     durations, tokens = [], []
     def measured(host, port, model_id, prompt, limit):
         start = clock()
@@ -84,7 +86,7 @@ def benchmark_local(dataset, output_dir, *, workspace, endpoint, model,
         durations.append(duration)
         tokens.append(count)
         return answer
-    sampler = sampler_factory()
+    sampler = sampler_factory(pid=process_pid) if process_pid is not None else sampler_factory()
     sampler.start()
     try:
         output, summary = generate_predictions(dataset, output_dir, endpoint=endpoint,
@@ -114,13 +116,16 @@ def main():
     parser.add_argument("--modelo", required=True)
     parser.add_argument("--endpoint", default="http://127.0.0.1:1234/v1")
     parser.add_argument("--max-tokens", type=int, default=256)
+    parser.add_argument("--pid-servidor", type=int, default=None,
+                        help="PID local opcional para consultar VRAM por proceso (puede ser N/D en WDDM)")
     parser.add_argument("--workspace", type=Path,
                         default=Path.home()/"Documents"/"Fresita Studio")
     args = parser.parse_args()
     output, report_path, report = benchmark_local(
         args.archivo, args.workspace/"experiments"/"predicciones",
         workspace=args.workspace, endpoint=args.endpoint,
-        model=args.modelo, max_tokens=args.max_tokens)
+        model=args.modelo, max_tokens=args.max_tokens,
+        process_pid=args.pid_servidor)
     print(json.dumps({"predicciones_privadas": str(output),
                       "reporte": str(report_path), "metricas": report},
                      ensure_ascii=False, indent=2))
