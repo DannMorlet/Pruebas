@@ -20,3 +20,19 @@ def checkpoint_settings(steps, interval=0):
         "save_total_limit": 2,
         "save_only_model": False,
     }
+
+
+_SAVE_KEYS = frozenset(("save_strategy", "save_steps", "save_total_limit", "save_only_model"))
+
+
+def sft_training_kwargs(base_kwargs, steps, interval=0):
+    """Une opciones SFT/TRL y checkpoints sin pasar argumentos duplicados.
+
+    Rechaza claves de guardado en la configuración base para evitar que una
+    opción silenciosamente anule otra. No modifica el diccionario recibido.
+    """
+    if not isinstance(base_kwargs, dict):
+        raise ValueError("La configuración SFT debe ser un diccionario.")
+    if _SAVE_KEYS.intersection(base_kwargs):
+        raise ValueError("Las opciones de guardado deben venir de checkpoint_settings.")
+    return {**base_kwargs, **checkpoint_settings(steps, interval)}
