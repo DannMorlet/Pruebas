@@ -22,6 +22,7 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
         "cuda_disponible": False,
         "gpu": None,
         "vram_total_mib": None,
+        "vram_libre_mib": None,
         "errores": [],
         "avisos": [],
     }
@@ -46,6 +47,25 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
                 report["gpu"] = str(torch.cuda.get_device_name(0))[:100]
                 props = torch.cuda.get_device_properties(0)
                 report["vram_total_mib"] = int(props.total_memory) // (1024 * 1024)
+                # Instantánea CUDA del dispositivo 0: no es VRAM exclusiva del modelo.
+                # Bajo WDDM puede variar inmediatamente después de la consulta.
+                mem_info = getattr(torch.cuda, "mem_get_info", None)
+                if callable(mem_info):
+                    try:
+                        libre, total_reportado = mem_info(0)
+                        if (type(libre) is int and type(total_reportado) is int
+                                and total_reportado > 0 and 0 <= libre <= total_reportado):
+                            report["vram_libre_mib"] = libre // (1024 * 1024)
+                            if libre < 2 * 1024**3:
+                                report["avisos"].append(
+                                    "Menos de 2 GiB de VRAM libre observada: cierra otras cargas de GPU antes de entrenar."
+                                )
+                        else:
+                            report["avisos"].append("CUDA devolvió VRAM libre inválida; se muestra N/D.")
+                    except (RuntimeError, OSError, ValueError, TypeError, AttributeError) as exc:
+                        report["avisos"].append(
+                            "No se pudo consultar VRAM libre (" + type(exc).__name__ + "); se muestra N/D."
+                        )
                 if report["vram_total_mib"] < 8192:
                     report["avisos"].append("VRAM limitada: reduce longitud, lote o tamaño del modelo si hay OOM.")
             else:

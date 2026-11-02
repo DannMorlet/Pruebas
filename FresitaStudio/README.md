@@ -105,8 +105,12 @@ Antes de cargar pesos, el worker comprueba Python x64, dependencias instaladas,
 disponibilidad de CUDA y VRAM total detectada. Para QLoRA exige `bitsandbytes`;
 que esté instalado **no garantiza** que funcione con el controlador y la versión
 de PyTorch. Si falta una dependencia, falla antes de descargar el modelo.
-El diagnóstico sólo devuelve versiones, nombre de GPU, memoria total y errores:
-no lee datasets ni guarda secretos.
+El diagnóstico devuelve versiones, nombre de GPU, VRAM total y, si PyTorch lo permite,
+**VRAM libre observada** en GPU 0 (`vram_libre_mib`). Si CUDA/WDDM no permite
+consultarla o devuelve datos inválidos, informa N/D sin impedir el diagnóstico.
+La cifra libre es una **instantánea del dispositivo**, no memoria exclusiva del modelo
+ni garantía de que el entrenamiento quepa en VRAM. Menos de 2 GiB libres genera
+una advertencia, no un bloqueo. No lee datasets ni guarda secretos.
 
 Desde el entorno de entrenamiento, crea un archivo de configuración JSON
 con `{"qlora": false}` (o `true` para QLoRA) y ejecuta:

@@ -30,6 +30,21 @@ def versions(name):
     return "1.0.0"
 
 
+class FakeCudaMemory(FakeCuda):
+    def __init__(self, free_mib=4096, total_mib=8192, error=None):
+        super().__init__(True, total_mib)
+        self.free_mib = free_mib
+        self.total_mib = total_mib
+        self.error = error
+        self.calls = []
+
+    def mem_get_info(self, index):
+        self.calls.append(index)
+        if self.error:
+            raise self.error
+        return (self.free_mib * 1024**2, self.total_mib * 1024**2)
+
+
 class TrainingPreflightTests(unittest.TestCase):
     def test_lora_cuda_lista_no_carga_pesos(self):
         result = inspect_environment(version_lookup=versions,
@@ -77,6 +92,43 @@ class TrainingPreflightTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertIn("Falta la dependencia: torch", result["errores"])
         self.assertFalse(result["cuda_disponible"])
+
+
+    def test_vram_libre_observada_en_gpu_cero(self):
+        cuda = FakeCudaMemory(free_mib=4096)
+        result = inspect_environment(version_lookup=versions,
+                                     torch_module=SimpleNamespace(cuda=cuda))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["vram_libre_mib"], 4096)
+        self.assertEqual(cuda.calls, [0])
+
+    def test_vram_libre_baja_es_advertencia_no_bloqueo(self):
+        result = inspect_environment(version_lookup=versions,
+                                     torch_module=SimpleNamespace(cuda=FakeCudaMemory(free_mib=1024)))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["vram_libre_mib"], 1024)
+        self.assertTrue(any("Menos de 2 GiB" in s for s in result["avisos"]))
+
+    def test_vram_libre_invalida_no_se_inventa(self):
+        result = inspect_environment(version_lookup=versions,
+                                     torch_module=SimpleNamespace(cuda=FakeCudaMemory(free_mib=9000)))
+        self.assertTrue(result["ok"])
+        self.assertIsNone(result["vram_libre_mib"])
+        self.assertTrue(any("VRAM libre inválida" in s for s in result["avisos"]))
+
+    def test_fallo_de_lectura_vram_libre_no_impide_preflight(self):
+        cuda = FakeCudaMemory(error=RuntimeError("No disponible"))
+        result = inspect_environment(version_lookup=versions,
+                                     torch_module=SimpleNamespace(cuda=cuda))
+        self.assertTrue(result["ok"])
+        self.assertIsNone(result["vram_libre_mib"])
+        self.assertTrue(any("se muestra N/D" in s for s in result["avisos"]))
+
+    def test_sin_api_memoria_libre_permanece_no_disponible(self):
+        result = inspect_environment(version_lookup=versions,
+                                     torch_module=SimpleNamespace(cuda=FakeCuda()))
+        self.assertTrue(result["ok"])
+        self.assertIsNone(result["vram_libre_mib"])
 
 
 if __name__ == "__main__":
