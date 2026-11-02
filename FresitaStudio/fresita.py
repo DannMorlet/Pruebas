@@ -45,6 +45,7 @@ class Fresita(tk.Tk):
         self.lr=tk.StringVar(value="0.0001")
         self.rank=tk.StringVar(value="8")
         self.checkpoints=tk.BooleanVar(value=False)
+        self.resume_checkpoint=tk.StringVar()
         self.endpoint=tk.StringVar(value="http://127.0.0.1:1234/v1")
         self.benchmark_path=tk.StringVar()
         self.server_pid=tk.StringVar()
@@ -153,6 +154,8 @@ class Fresita(tk.Tk):
                            variable=self.checkpoints,bg=PANEL,fg=TEXT,
                            selectcolor="#312A3A",activebackground=PANEL,
                            activeforeground=TEXT).pack(anchor="w",pady=3)
+            self.field(c,"REANUDAR DESDE CHECKPOINT (OPCIONAL; DEJAR VACÍO PARA NUEVO)",self.resume_checkpoint)
+            self.button(c,"Seleccionar carpeta checkpoint-N",self.choose_checkpoint)
             self.button(c,"Iniciar entrenamiento real",self.train,True)
             self.button(c,"Detener proceso",self.stop)
             self.label(c,"Con validación independiente, se calcula eval_loss y perplejidad al terminar; no se entrena con el archivo de validación.",9,MUTED)
@@ -456,6 +459,12 @@ class Fresita(tk.Tk):
         filename=filedialog.askopenfilename(filetypes=[("JSONL","*.jsonl")])
         if filename:self.validation_path.set(filename)
 
+    def choose_checkpoint(self):
+        folder=filedialog.askdirectory(title="Selecciona checkpoint-N de Fresita")
+        if folder:
+            self.resume_checkpoint.set(folder)
+            self.checkpoints.set(True)
+
     def inspect(self):
         filename=filedialog.askdirectory(title="Selecciona carpeta de un modelo")
         if not filename:return
@@ -487,6 +496,15 @@ class Fresita(tk.Tk):
                  "checkpoint_interval":min(25,steps) if self.checkpoints.get() else 0,
                  "output":str(BASE/"experiments"/("job-"+time.strftime("%Y%m%d-%H%M%S")))}
             if not cfg["model"]:raise ValueError("Introduce el modelo base")
+            resume=self.resume_checkpoint.get().strip()
+            if resume:
+                if not self.checkpoints.get():
+                    raise ValueError("Activa el guardado de checkpoints para reanudar.")
+                selected=Path(resume).expanduser().resolve(strict=True)
+                if not selected.is_dir():
+                    raise ValueError("Selecciona una carpeta de checkpoint válida.")
+                cfg["resume_checkpoint"]=str(selected)
+                cfg["output"]=str(selected.parent)
             if self.validation_path.get().strip():
                 val=Path(self.validation_path.get().strip())
                 counts=validate_eval_pair(data,val)
@@ -497,7 +515,9 @@ class Fresita(tk.Tk):
             if not python.exists():raise ValueError("Instala el entorno de entrenamiento .venv con Python x64")
             script=Path(getattr(sys,"_MEIPASS",Path(__file__).resolve().parent))/"workers"/"train_lora.py"
             if not script.exists():raise FileNotFoundError("Falta workers/train_lora.py")
-            if not messagebox.askyesno("Entrenar IA","¿Iniciar entrenamiento real con la GPU? Se pueden descargar pesos grandes."):return
+            aviso=("¿Reanudar desde el checkpoint indicado? Se verificará receta, datasets y estado antes de entrenar."
+                   if resume else "¿Iniciar entrenamiento real con la GPU? Se pueden descargar pesos grandes.")
+            if not messagebox.askyesno("Entrenar IA",aviso):return
             flags=subprocess.CREATE_NO_WINDOW if os.name=="nt" else 0
             self.proc=subprocess.Popen([str(python),str(script),"--config",str(recipe)],
                   stdout=subprocess.PIPE,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,
