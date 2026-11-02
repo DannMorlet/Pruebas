@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import sys
+from importlib import metadata
 
 # En desarrollo y en PyInstaller --add-data, fresita_core está en el directorio padre.
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -14,14 +15,68 @@ from fresita_training_diagnostics import run_training_stage
 from fresita_checkpoints import sft_training_kwargs
 from fresita_resume import prepare_training_run, installed_runtime_versions
 
+def validate_backend(cfg):
+    """Elegir backend sin efectos secundarios; Unsloth no reanuda checkpoints aún."""
+    backend = cfg.get("backend", "trl")
+    if backend not in ("trl", "unsloth"):
+        raise ValueError("Backend de entrenamiento no reconocido.")
+    if backend == "unsloth" and (
+        cfg.get("checkpoint_interval", 0) or cfg.get("resume_checkpoint")
+    ):
+        raise ValueError(
+            "Los checkpoints y la reanudación de Unsloth no están validados. "
+            "Desactívalos o usa TRL/PEFT."
+        )
+    return backend
+
+
+def load_unsloth_model(model_id, rank, qlora, fast_language_model):
+    """Carga modelo y prepara LoRA con la API oficial de Unsloth.
+
+    Se inyecta FastLanguageModel para probar los argumentos sin CUDA en CI.
+    """
+    if not isinstance(model_id, str) or not model_id.strip():
+        raise ValueError("Indica un modelo base válido.")
+    if type(rank) is not int or not 1 <= rank <= 128:
+        raise ValueError("El rango LoRA debe estar entre 1 y 128.")
+    if type(qlora) is not bool:
+        raise ValueError("QLoRA debe ser booleano.")
+    model, tokenizer = fast_language_model.from_pretrained(
+        model_name=model_id, max_seq_length=256, dtype=None,
+        load_in_4bit=qlora,
+    )
+    model = fast_language_model.get_peft_model(
+        model, r=rank, lora_alpha=rank * 2, lora_dropout=0,
+        bias="none",
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                        "gate_proj", "up_proj", "down_proj"],
+        use_gradient_checkpointing="unsloth", random_state=3407,
+    )
+    return model, tokenizer
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--config",required=True)
     parser.add_argument("--preflight",action="store_true",help="Revisar CUDA y dependencias sin cargar modelos")
     args=parser.parse_args()
     cfg=json.loads(Path(args.config).read_text(encoding="utf-8"))
+    backend=validate_backend(cfg)
+    # Unsloth debe importarse antes de torch/transformers/TRL para aplicar sus parches.
+    # En --preflight no se importa Unsloth ni se cargan pesos.
+    if backend == "unsloth" and not args.preflight:
+        from unsloth import FastLanguageModel
+    else:
+        FastLanguageModel = None
     from fresita_train_preflight import inspect_environment
     report=inspect_environment(qlora=bool(cfg.get("qlora")))
+    if backend == "unsloth":
+        try:
+            report["dependencias"]["unsloth"] = metadata.version("unsloth")
+        except metadata.PackageNotFoundError:
+            report["dependencias"]["unsloth"] = None
+            report["errores"].append("Falta Unsloth en el entorno aislado.")
+            report["ok"] = False
     print("DIAGNÓSTICO CUDA:",json.dumps(report,ensure_ascii=False),flush=True)
     if not report["ok"]:
         raise RuntimeError("Entorno de entrenamiento incompleto: "+"; ".join(report["errores"]))
@@ -63,13 +118,20 @@ def main():
             load_in_4bit=True,bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=dtype,bnb_4bit_use_double_quant=True)
         kwargs["device_map"]="auto"
-    print("Iniciando entrenamiento CUDA con:",torch.cuda.get_device_name(0),flush=True)
-    model=run_training_stage("carga",AutoModelForCausalLM.from_pretrained,cfg["model"],**kwargs)
-    model.config.use_cache=False
-    tok=AutoTokenizer.from_pretrained(cfg["model"],trust_remote_code=False)
-    if tok.pad_token is None:tok.pad_token=tok.eos_token
+    print("Iniciando entrenamiento CUDA con:",torch.cuda.get_device_name(0),
+          "| backend:",backend,flush=True)
     rank=int(cfg["rank"])
-    peft=LoraConfig(r=rank,lora_alpha=rank*2,task_type="CAUSAL_LM",target_modules="all-linear")
+    if backend == "unsloth":
+        model,tok=run_training_stage(
+            "carga",load_unsloth_model,cfg["model"],rank,bool(cfg.get("qlora")),
+            FastLanguageModel)
+        peft=None  # Unsloth ya aplicó el adaptador: no duplicar PEFT en SFTTrainer.
+    else:
+        model=run_training_stage("carga",AutoModelForCausalLM.from_pretrained,cfg["model"],**kwargs)
+        tok=AutoTokenizer.from_pretrained(cfg["model"],trust_remote_code=False)
+        peft=LoraConfig(r=rank,lora_alpha=rank*2,task_type="CAUSAL_LM",target_modules="all-linear")
+    model.config.use_cache=False
+    if tok.pad_token is None:tok.pad_token=tok.eos_token
     steps=int(cfg["steps"])
     opts=SFTConfig(**sft_training_kwargs(dict(
        output_dir=cfg["output"],max_steps=steps,

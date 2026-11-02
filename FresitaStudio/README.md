@@ -270,3 +270,27 @@ de que no se ha comprobado la compatibilidad de versiones. No se
 reescriben ni migran checkpoints existentes. Una huella coincidente
 NO demuestra que CUDA pueda reanudar correctamente: sigue pendiente
 probar recuperación de optimizador y RNG en la RTX 5060 física.
+
+## Entrenamiento opcional con Unsloth (experimental, 2026-11-02)
+
+En **Entrenar → Motor de entrenamiento**, selecciona **Unsloth (experimental)**
+después de preparar y comprobar `.venv-unsloth` (Python 3.13 x64 y uv).
+La GUI crea la receta con `"backend": "unsloth"` y ejecuta el worker con
+el Python de ese entorno, sin modificar el `.venv` TRL/PEFT existente.
+
+El worker importa Unsloth **antes de PyTorch y Transformers**, utiliza
+`FastLanguageModel.from_pretrained` y `get_peft_model` para crear un
+adaptador LoRA, y pasa el modelo ya adaptado a TRL `SFTTrainer`
+**sin volver a aplicar PEFT**. La ruta normal `TRL/PEFT` permanece igual.
+
+Por seguridad, Unsloth rechaza **checkpoints y reanudación** hasta validar
+el guardado y la restauración en GPU real. La selección del modelo debe ser
+compatible con Unsloth y sus módulos de atención/MLP; de lo contrario
+falla sin convertir silenciosamente la arquitectura. No se cambian
+pesos originales. El contexto inicial es de 256 tokens y el lote es 1
+con acumulación 4 para limitar VRAM; esto no garantiza caber en 8 GB.
+
+**Validación pendiente:** importación real de Unsloth, kernels Blackwell
+y entrenamiento LoRA/QLoRA en RTX 5060 8 GB, además de rendimiento,
+métricas y consumo de memoria. GitHub Actions comprueba lógica y
+empaquetado con pruebas sin CUDA, no ejecuta un entrenamiento físico.

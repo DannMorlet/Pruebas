@@ -47,6 +47,7 @@ class Fresita(tk.Tk):
         self.validation_path=tk.StringVar()
         self.model=tk.StringVar(value="Qwen/Qwen3-0.6B")
         self.mode=tk.StringVar(value="LoRA")
+        self.backend=tk.StringVar(value="TRL/PEFT")
         self.steps=tk.StringVar(value="100")
         self.lr=tk.StringVar(value="0.0001")
         self.rank=tk.StringVar(value="8")
@@ -175,6 +176,10 @@ class Fresita(tk.Tk):
             self.field(c,"MODELO BASE: ID HUGGING FACE O CARPETA",self.model)
             self.label(c,"MÉTODO",10,MUTED,True)
             ttk.Combobox(c,textvariable=self.mode,values=["LoRA","QLoRA (4-bit)"],state="readonly").pack(fill="x")
+            self.label(c,"MOTOR DE ENTRENAMIENTO",10,MUTED,True)
+            ttk.Combobox(c,textvariable=self.backend,
+                         values=["TRL/PEFT","Unsloth (experimental)"],
+                         state="readonly").pack(fill="x")
             self.field(c,"DATASET JSONL CON COLUMNA TEXT",self.dataset_path)
             self.field(c,"VALIDACIÓN JSONL (OPCIONAL, NO SE ENTRENA CON ÉL)",self.validation_path)
             self.button(c,"Seleccionar archivo de validación",self.choose_validation)
@@ -191,7 +196,7 @@ class Fresita(tk.Tk):
             self.button(c,"Comprobar Unsloth opcional (sin instalar)",self.check_unsloth_env)
             self.button(c,"Comprobar Unsloth aislado (sin instalar)",lambda:self.check_unsloth_env(".venv-unsloth"))
             self.button(c,"Preparar Unsloth aislado (experimental)",self.setup_unsloth_env)
-            self.label(c,"Unsloth se inspecciona por separado; el entrenamiento actual usa TRL/PEFT.",9,MUTED)
+            self.label(c,"Unsloth usa .venv-unsloth aislado. Su entrenamiento es experimental; sin checkpoints ni reanudación.",9,MUTED)
             self.button(c,"Preparar entorno de entrenamiento (instalación guiada)",self.setup_training_env)
             self.button(c,"Cancelar instalación de dependencias",self.cancel_training_setup)
             self.label(c,"Instala sólo en un .venv NUEVO; no actualiza Python, drivers, ni entornos existentes.",9,MUTED)
@@ -724,7 +729,10 @@ class Fresita(tk.Tk):
             stats=audit_dataset(data)
             if stats["unicos"]<2 or stats["invalidos"]:
                 raise ValueError("El dataset debe tener al menos 2 ejemplos únicos y ninguna fila inválida. Audita y limpia los datos.")
-            cfg={"model":self.model.get().strip(),"dataset":str(data.resolve()),
+            backend="unsloth" if self.backend.get()=="Unsloth (experimental)" else "trl"
+            if backend=="unsloth" and (self.checkpoints.get() or self.resume_checkpoint.get().strip()):
+                raise ValueError("Desactiva checkpoints y reanudación para Unsloth experimental.")
+            cfg={"backend":backend,"model":self.model.get().strip(),"dataset":str(data.resolve()),
                  "steps":steps,"rank":rank,"lr":lr,"qlora":self.mode.get().startswith("QLoRA"),
                  "checkpoint_interval":min(25,steps) if self.checkpoints.get() else 0,
                  "output":str(BASE/"experiments"/("job-"+time.strftime("%Y%m%d-%H%M%S")))}
@@ -744,12 +752,17 @@ class Fresita(tk.Tk):
                 cfg["eval_dataset"]=str(val.resolve())
                 cfg["validation_count"]=counts["validacion_unicos"]
             recipe=save_recipe(cfg)
-            python=(BASE/".venv"/"Scripts"/"python.exe")
-            if not python.exists():raise ValueError("Instala el entorno de entrenamiento .venv con Python x64")
+            env_name=".venv-unsloth" if backend=="unsloth" else ".venv"
+            python=(BASE/env_name/"Scripts"/"python.exe")
+            if not python.exists():
+                raise ValueError("Prepara primero el entorno "+env_name+" con Python x64")
             script=Path(getattr(sys,"_MEIPASS",Path(__file__).resolve().parent))/"workers"/"train_lora.py"
             if not script.exists():raise FileNotFoundError("Falta workers/train_lora.py")
             aviso=("¿Reanudar desde el checkpoint indicado? Se verificará receta, datasets y estado antes de entrenar."
-                   if resume else "¿Iniciar entrenamiento real con la GPU? Se pueden descargar pesos grandes.")
+                   if resume else
+                   ("¿Iniciar Unsloth EXPERIMENTAL con tu GPU? Descargará pesos si faltan. "
+                    "No se ha validado aún en RTX 5060." if backend=="unsloth" else
+                    "¿Iniciar entrenamiento real con la GPU? Se pueden descargar pesos grandes."))
             if not messagebox.askyesno("Entrenar IA",aviso):return
             flags=subprocess.CREATE_NO_WINDOW if os.name=="nt" else 0
             self.proc=subprocess.Popen([str(python),str(script),"--config",str(recipe)],
