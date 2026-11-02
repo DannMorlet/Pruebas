@@ -114,18 +114,18 @@ class ProcessTreeTests(unittest.TestCase):
 
     def test_gpu_evidencia_pid_aun_con_vram_wddm_nd(self):
         rows = candidate_gpu_evidence_snapshot([10, 20, 30],
-            runner=lambda: "10, N/A\\n20, 512\\n99, 100\\n")
+            runner=lambda: "10, N/A\n20, 512\n99, 100\n")
         self.assertEqual(rows, [(10, True, None), (20, True, 512), (30, None, None)])
 
     def test_gpu_evidencia_duplicada_no_se_confirma(self):
         self.assertEqual(candidate_gpu_evidence_snapshot([10],
-            runner=lambda: "10, 100\\n10, 200\\n"), [(10, None, None)])
+            runner=lambda: "10, 100\n10, 200\n"), [(10, None, None)])
 
     def test_gpu_evidencia_solo_una_consulta(self):
         calls = []
         def runner():
             calls.append(1)
-            return "10, 256\\n"
+            return "10, 256\n"
         self.assertEqual(candidate_gpu_evidence_snapshot([10], runner=runner),
                          [(10, True, 256)])
         self.assertEqual(calls, [1])
