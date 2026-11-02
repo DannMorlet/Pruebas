@@ -11,6 +11,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fresita_core import validate_eval_pair, evaluation_summary
 from fresita_metrics import append_metrics, evaluation_fingerprints
 from fresita_training_diagnostics import run_training_stage
+from fresita_checkpoints import checkpoint_settings
 
 def main():
     parser=argparse.ArgumentParser()
@@ -18,6 +19,7 @@ def main():
     parser.add_argument("--preflight",action="store_true",help="Revisar CUDA y dependencias sin cargar modelos")
     args=parser.parse_args()
     cfg=json.loads(Path(args.config).read_text(encoding="utf-8"))
+    checkpoint_options=checkpoint_settings(int(cfg["steps"]),cfg.get("checkpoint_interval",0))
     from fresita_train_preflight import inspect_environment
     report=inspect_environment(qlora=bool(cfg.get("qlora")))
     print("DIAGNÓSTICO CUDA:",json.dumps(report,ensure_ascii=False),flush=True)
@@ -65,7 +67,8 @@ def main():
        gradient_checkpointing=True,logging_steps=5,save_strategy="no",
        eval_strategy="steps" if eval_ds is not None else "no",
        eval_steps=max(1,steps//5) if eval_ds is not None else None,
-       report_to="none",bf16=dtype==torch.bfloat16,fp16=dtype==torch.float16)
+       report_to="none",bf16=dtype==torch.bfloat16,fp16=dtype==torch.float16,
+       **checkpoint_options)
     class HistoryCallback(TrainerCallback):
         def on_log(self, args, state, control, logs=None, **kwargs):
             append_metrics(Path(cfg["output"])/"metricas_historial.jsonl",
