@@ -192,3 +192,17 @@ Si ya tienes la build más reciente, el botón no vuelve a descargarla.
 El gestor mantiene intactas las versiones anteriores. Las pruebas CI
 simulan preferencias y versiones; **no prueban una instalación física
 de CUDA 13.4 en una RTX 5060**.
+
+## Diagnóstico desde la interfaz (sin entrenar)
+
+En **Entrenar**, pulsa **Revisar CUDA, PyTorch, TRL y PEFT (sin entrenar)**.
+Fresita abre el worker en el entorno local `.venv` con la opción
+`--preflight` y una receta temporal que sólo indica LoRA/QLoRA.
+Muestra Python x64, paquetes instalados, GPU y VRAM observada, además de
+errores y advertencias en español mexicano. La consulta corre en segundo
+plano; **no descarga modelos, no lee datasets, no instala dependencias ni
+inicia un entrenamiento**. Si falta el entorno Python, explica cómo
+prepararlo. El resultado es un diagnóstico previo, no una prueba real
+de entrenamiento ni de compatibilidad de bitsandbytes en tu RTX 5060.
+
+Las pruebas de CI usan un proceso simulado y no requieren PyTorch/CUDA.

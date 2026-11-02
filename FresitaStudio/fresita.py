@@ -14,6 +14,7 @@ from urllib.request import urlopen
 
 from fresita_llama import latest_compatible_release, install_release, installed_server, gpu_compatibility, start_server
 from fresita_updates import load_settings, save_settings, update_message
+from fresita_train_check import check_training_environment, format_preflight_report
 from fresita_core import BASE, init_workspace, import_dataset, clean_dataset, audit_dataset, split_dataset, validate_eval_pair, inspect_safetensors, save_recipe, gpu_summary
 from fresita_metrics import list_experiments,read_history,read_summary,compare_summaries
 from fresita_quality import evaluate_predictions, save_quality_report
@@ -53,6 +54,7 @@ class Fresita(tk.Tk):
         self.server_pid=tk.StringVar()
         self.benchmark_cancel=threading.Event()
         self.benchmark_running=False
+        self.train_check_busy=False
         self.llama_proc=None
         self.llama_gguf=tk.StringVar()
         self.llama_info=tk.StringVar(value="Motor aún no comprobado")
@@ -179,6 +181,7 @@ class Fresita(tk.Tk):
                            activeforeground=TEXT).pack(anchor="w",pady=3)
             self.field(c,"REANUDAR DESDE CHECKPOINT (OPCIONAL; DEJAR VACÍO PARA NUEVO)",self.resume_checkpoint)
             self.button(c,"Seleccionar carpeta checkpoint-N",self.choose_checkpoint)
+            self.button(c,"Revisar CUDA, PyTorch, TRL y PEFT (sin entrenar)",self.check_training_env)
             self.button(c,"Iniciar entrenamiento real",self.train,True)
             self.button(c,"Detener proceso",self.stop)
             self.label(c,"Con validación independiente, se calcula eval_loss y perplejidad al terminar; no se entrena con el archivo de validación.",9,MUTED)
@@ -588,6 +591,24 @@ class Fresita(tk.Tk):
             messagebox.showinfo("Proyecto guardado",str(path))
         except (OSError,ValueError) as e:messagebox.showerror("Error",str(e))
 
+    def check_training_env(self):
+        if self.train_check_busy:
+            return
+        if self.proc and self.proc.poll() is None:
+            messagebox.showwarning("Entrenamiento activo",
+                                   "Espera a que termine el trabajo para revisar CUDA.")
+            return
+        self.train_check_busy=True
+        self.status.set("Comprobando dependencias y CUDA sin cargar pesos...")
+        qlora=self.mode.get().startswith("QLoRA")
+        def work():
+            try:
+                report=check_training_environment(qlora)
+                self.events.put(("train_check_result",report))
+            except (OSError,ValueError,RuntimeError,TimeoutError) as exc:
+                self.events.put(("train_check_error",str(exc)))
+        threading.Thread(target=work,daemon=True).start()
+
     def train(self):
         if self.proc and self.proc.poll() is None:
             messagebox.showwarning("Ocupado","Ya hay un trabajo ejecutándose");return
@@ -652,6 +673,20 @@ class Fresita(tk.Tk):
             while True:
                 kind,data=self.events.get_nowait()
                 if kind=="gpu":self.gpu.set(data)
+                if kind=="train_check_result":
+                    self.train_check_busy=False
+                    self.status.set("Diagnóstico CUDA completado" if data["ok"] else
+                                    "Faltan requisitos para entrenar")
+                    title="Diagnóstico de entrenamiento"
+                    message=format_preflight_report(data)
+                    if data["ok"]:
+                        messagebox.showinfo(title,message)
+                    else:
+                        messagebox.showwarning(title,message)
+                if kind=="train_check_error":
+                    self.train_check_busy=False
+                    self.status.set("No se pudo comprobar el entorno de entrenamiento")
+                    messagebox.showerror("Diagnóstico de entrenamiento",data)
                 if kind=="llama_info":
                     self.llama_busy=False
                     self.llama_info.set(data)
