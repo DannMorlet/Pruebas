@@ -42,3 +42,20 @@ Un PID incorrecto o un servidor que usa varios procesos puede dar N/D o
 una medición incompleta. No se envían datos a internet y el muestreo sólo
 ocurre mientras se ejecuta el benchmark. **Esta función aún requiere
 validación física en RTX 5060 / Windows 11.**
+
+
+## RAM física por proceso (opcional)
+
+Con el mismo PID introducido para VRAM, Fresita consulta en Windows 11 la
+API de sólo lectura GetProcessMemoryInfo y registra WorkingSetSize
+en MiB: línea base, pico observado, última muestra y diferencia pico-base.
+El working set es la RAM física residente del proceso completo y puede
+incluir páginas compartidas. No es memoria privada ni memoria exclusiva del
+modelo; tampoco suma automáticamente procesos hijos del servidor.
+
+Si no se proporciona PID, no se realiza consulta por proceso. Si el PID es
+incorrecto, el proceso termina o Windows deniega acceso, se registra N/D,
+no cero. El muestreo termina con el benchmark, no lee contenidos de memoria,
+no instala controladores y no requiere paquetes adicionales. Las pruebas CI
+comprueban la API sobre el propio proceso de pruebas de Windows; todavía
+falta contrastar el valor con el servidor real y la RTX 5060.

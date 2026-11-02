@@ -94,5 +94,55 @@ class ProcessMemoryTests(unittest.TestCase):
                 model="modelo", process_pid=True)
 
 
+
+class ProcessRamTests(unittest.TestCase):
+    def test_ram_pid_invalido(self):
+        from fresita_resources import probe_process_ram
+        for pid in (0, -5, True, 2.5, "123"):
+            with self.subTest(pid=pid), self.assertRaises(ValueError):
+                probe_process_ram(pid)
+
+    @unittest.skipUnless(sys.platform == "win32", "API RAM por PID sólo en Windows")
+    def test_windows_ram_proceso_actual(self):
+        import os
+        from fresita_resources import probe_process_ram
+        used = probe_process_ram(os.getpid())
+        self.assertIsInstance(used, int)
+        self.assertGreater(used, 0)
+
+    def test_ram_pid_pico_y_muestras_validas(self):
+        snapshots = iter([
+            {"ram_used_mib": 10000, "ram_total_mib": 32000,
+             "ram_process_used_mib": 600},
+            {"ram_used_mib": 10500, "ram_total_mib": 32000,
+             "ram_process_used_mib": 900},
+            {"ram_used_mib": 10100, "ram_total_mib": 32000,
+             "ram_process_used_mib": None},
+        ])
+        sampler = ResourceSampler(pid=123, probe=lambda: next(snapshots))
+        for _ in range(3):
+            sampler.capture()
+        report = sampler.summary()
+        self.assertEqual(report["ram_proceso_pid"], 123)
+        self.assertEqual(report["ram_proceso_muestras"], 2)
+        self.assertEqual(report["ram_proceso_base_mib"], 600)
+        self.assertEqual(report["ram_proceso_pico_mib"], 900)
+        self.assertEqual(report["ram_proceso_delta_pico_base_mib"], 300)
+        self.assertEqual(report["ram_global_pico_mib"], 10500)
+        self.assertIn("proceso completo", report["advertencia_recursos"])
+
+    def test_sin_pid_no_atribuye_ram(self):
+        sampler = ResourceSampler(probe=lambda: {"ram_process_used_mib": 250})
+        sampler.capture()
+        report = sampler.summary()
+        self.assertIsNone(report["ram_proceso_pid"])
+        self.assertIsNone(report["ram_proceso_pico_mib"])
+        self.assertEqual(report["ram_proceso_muestras"], 0)
+
+    def test_ram_invalida_no_se_registra(self):
+        sampler = ResourceSampler(pid=123, probe=lambda: {"ram_process_used_mib": True})
+        sampler.capture()
+        self.assertIsNone(sampler.summary()["ram_proceso_pico_mib"])
+
 if __name__ == "__main__":
     unittest.main()

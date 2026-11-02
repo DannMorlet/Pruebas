@@ -178,12 +178,12 @@ class Fresita(tk.Tk):
             self.label(c,"Evalúa archivos existentes o genera respuestas usando un servidor local.",10,MUTED)
             self.field(c,"SERVIDOR LOCAL (SÓLO 127.0.0.1)",self.endpoint)
             self.field(c,"MODELO CARGADO EN SERVIDOR LOCAL",self.model)
-            self.field(c,"PID DEL SERVIDOR (OPCIONAL; PARA VRAM POR PROCESO)",self.server_pid)
+            self.field(c,"PID DEL SERVIDOR (OPCIONAL; VRAM Y RAM POR PROCESO)",self.server_pid)
             self.field(c,"BENCHMARK JSONL (PREGUNTA, REFERENCIA, CATEGORIA)",self.benchmark_path)
             self.button(c,"Elegir benchmark",self.choose_benchmark)
             self.button(c,"Generar, medir velocidad y evaluar (local)",self.start_benchmark,True)
             self.button(c,"Cancelar generación",self.cancel_benchmark)
-            self.label(c,"Mide latencia, tokens/s, VRAM GPU 0 y RAM global. PID opcional: VRAM del proceso si NVIDIA la informa; en WDDM puede aparecer N/D.",9,MUTED)
+            self.label(c,"Mide latencia, tokens/s, VRAM GPU 0 y RAM global. PID opcional: VRAM del proceso si NVIDIA la informa y RAM física del proceso si Windows permite consultarla.",9,MUTED)
             self.label(c,"Se envía únicamente la pregunta a 127.0.0.1. El JSONL de salida contiene respuestas y referencias privadas; no lo subas a GitHub.",9,MUTED)
             self.button(c,"Evaluar predicciones JSONL",self.evaluate_quality,True)
             self.label(c,"Español: coincidencia normalizada y F1 de tokens. Python: coincidencia y sintaxis; no corrección funcional.",10,MUTED)
@@ -513,6 +513,11 @@ class Fresita(tk.Tk):
                         f"pico {data[4]['gpu_proceso_pico_mib'] if data[4]['gpu_proceso_pico_mib'] is not None else 'N/D'} MiB\n"
                         if data[4].get("gpu_proceso_pid") is not None else
                         "Sin PID: no se midió VRAM por proceso.\n")
+                    if data[4].get("ram_proceso_pid") is not None:
+                        ram_peak = data[4].get("ram_proceso_pico_mib")
+                        pid_line += (
+                            f"RAM física del proceso PID {data[4]['ram_proceso_pid']}: "
+                            f"pico {ram_peak if ram_peak is not None else 'N/D'} MiB\n")
                     messagebox.showinfo("Benchmark terminado",
                         f"Predicciones privadas: {data[0]}\nReporte de calidad: {data[1]}\n"
                         f"Reporte de velocidad: {data[3]}\n"
@@ -523,7 +528,7 @@ class Fresita(tk.Tk):
                         f"RAM global: base {data[4]['ram_global_base_mib'] if data[4]['ram_global_base_mib'] is not None else 'N/D'} MiB"
                         f" | pico {data[4]['ram_global_pico_mib'] if data[4]['ram_global_pico_mib'] is not None else 'N/D'} MiB\n"
                         + pid_line
-                        + "La VRAM por PID no es memoria exclusiva del modelo.\n"
+                        + "VRAM y RAM por PID corresponden al proceso completo, no sólo al modelo.\n"
                         "No se envió la referencia al modelo.")
                 if kind=="benchmark_error":
                     self.benchmark_running=False

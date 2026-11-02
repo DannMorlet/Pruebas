@@ -24,13 +24,61 @@ def parse_process_gpu_memory(output, pid):
     return matches[0] if len(matches) == 1 else None
 
 
+
+def probe_process_ram(pid):
+    """Working set físico actual de un PID de Windows en MiB; N/D si no es legible.
+
+    Mide el proceso completo, no los pesos del modelo ni la memoria privada.
+    """
+    if type(pid) is not int or pid <= 0:
+        raise ValueError("PID inválido")
+    if os.name != "nt":
+        return None
+    try:
+        class ProcessMemoryCounters(ctypes.Structure):
+            _fields_ = [
+                ("cb", ctypes.c_ulong),
+                ("PageFaultCount", ctypes.c_ulong),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+            ]
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        psapi = ctypes.WinDLL("psapi", use_last_error=True)
+        kernel.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+        kernel.OpenProcess.restype = ctypes.c_void_p
+        kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+        kernel.CloseHandle.restype = ctypes.c_int
+        psapi.GetProcessMemoryInfo.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ProcessMemoryCounters), ctypes.c_ulong]
+        psapi.GetProcessMemoryInfo.restype = ctypes.c_int
+        handle = kernel.OpenProcess(0x1000, 0, pid)
+        if not handle:
+            return None
+        try:
+            counters = ProcessMemoryCounters()
+            counters.cb = ctypes.sizeof(counters)
+            if not psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb):
+                return None
+            return counters.WorkingSetSize // (1024 * 1024)
+        finally:
+            kernel.CloseHandle(handle)
+    except (AttributeError, OSError, ValueError):
+        return None
+
+
 def probe_resources(pid=None):
     """Memoria global y, opcionalmente, VRAM del proceso PID en GPU 0."""
     if pid is not None and (type(pid) is not int or pid <= 0):
         raise ValueError("PID inválido")
     result = {"gpu_used_mib": None, "gpu_total_mib": None,
               "ram_used_mib": None, "ram_total_mib": None,
-              "gpu_process_used_mib": None}
+              "gpu_process_used_mib": None, "ram_process_used_mib": None}
     exe = shutil.which("nvidia-smi")
     if exe:
         try:
@@ -80,6 +128,8 @@ def probe_resources(pid=None):
                 result["ram_used_mib"] = (state.ullTotalPhys - state.ullAvailPhys) // mib
         except (AttributeError, OSError, ValueError):
             pass
+    if pid is not None:
+        result["ram_process_used_mib"] = probe_process_ram(pid)
     return result
 
 
@@ -94,7 +144,7 @@ class ResourceSampler:
         self.pid = pid
         self.probe = probe if probe is not None else lambda: probe_resources(pid=pid)
         self.interval = interval
-        self.samples = {"gpu": [], "ram": [], "gpu_process": []}
+        self.samples = {"gpu": [], "ram": [], "gpu_process": [], "ram_process": []}
         self.totals = {"gpu": None, "ram": None}
         self._stop = threading.Event()
         self._thread = None
@@ -120,6 +170,10 @@ class ResourceSampler:
                     and (self.totals["gpu"] is None
                          or process_used <= self.totals["gpu"])):
                 self.samples["gpu_process"].append(process_used)
+            ram_process = data.get("ram_process_used_mib")
+            if (self.pid is not None and type(ram_process) is int
+                    and 0 <= ram_process):
+                self.samples["ram_process"].append(ram_process)
 
     def start(self):
         if self._thread is not None:
@@ -159,11 +213,21 @@ class ResourceSampler:
             report["gpu_proceso_final_mib"] = values[-1] if values else None
             report["gpu_proceso_delta_pico_base_mib"] = (
                 max(values) - values[0] if values else None)
+            values = list(self.samples["ram_process"])
+            report["ram_proceso_pid"] = self.pid
+            report["ram_proceso_muestras"] = len(values)
+            report["ram_proceso_base_mib"] = values[0] if values else None
+            report["ram_proceso_pico_mib"] = max(values) if values else None
+            report["ram_proceso_final_mib"] = values[-1] if values else None
+            report["ram_proceso_delta_pico_base_mib"] = (
+                max(values) - values[0] if values else None)
         report["advertencia_recursos"] = (
             "VRAM de GPU 0 y RAM globales, no atribuibles al modelo. "
             "El muestreo puede omitir picos entre lecturas; "
             "N/D si no hay nvidia-smi o medición disponible. "
             "La VRAM por PID (si se solicitó) incluye todo el proceso, "
-            "no sólo el modelo; WDDM puede reportar N/D."
+            "no sólo el modelo; WDDM puede reportar N/D. "
+            "La RAM por PID es el working set físico del proceso completo, "
+            "puede incluir memoria compartida y no equivale a RAM exclusiva del modelo."
         )
         return report
