@@ -90,3 +90,11 @@ servidor local. Muestra la VRAM de ese proceso en GPU 0 sólo cuando
 especialmente bajo WDDM. No es VRAM exclusiva del modelo. Consulta
 [docs/VELOCIDAD.md](docs/VELOCIDAD.md). CI valida parsing, muestreo y
 privacidad con datos falsos, no el hardware real.
+
+## Evidencia de procesos de cómputo NVIDIA (experimental)
+La detección de PID ahora diferencia **enumerado en la lista de cómputo de GPU 0**
+de **VRAM numérica disponible**. Bajo WDDM un PID puede aparecer con VRAM N/D.
+Si un PID no aparece, Fresita muestra «no confirmado», nunca «no usa GPU».
+Una coincidencia sólo confirma que `nvidia-smi` enumeró el PID en esa consulta:
+no identifica automáticamente el proceso que contiene los pesos ni prueba
+uso exclusivo de la GPU. El análisis es puntual y no lee datos privados.
