@@ -68,3 +68,18 @@ def run_training_stage(stage, operation, *args, **kwargs):
             print("FRESITA_DIAGNOSTICO: " + json.dumps(
                 diagnosis, ensure_ascii=False), file=sys.stderr, flush=True)
         raise
+
+
+def report_terminal_failure(exc):
+    """Evita que el traceback final revele rutas privadas en errores de memoria.
+
+    Devuelve True cuando se reconoció el error; el llamador debe salir con código 1.
+    Los diagnósticos por etapa ya fueron emitidos por run_training_stage.
+    """
+    diagnosis = diagnose_memory_error(exc, "entrenamiento")
+    if diagnosis is None:
+        return False
+    print("FRESITA_ERROR_FINAL: " + json.dumps(
+        {"codigo": diagnosis["codigo"], "detalle": "Entrenamiento detenido por memoria insuficiente."},
+        ensure_ascii=False), file=sys.stderr, flush=True)
+    return True
