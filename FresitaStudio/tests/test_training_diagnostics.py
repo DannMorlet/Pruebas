@@ -23,6 +23,12 @@ class MemoryDiagnosticsTests(unittest.TestCase):
             RuntimeError("CUBLAS_STATUS_ALLOC_FAILED when calling cublasCreate"), "entrenamiento")
         self.assertEqual(result["codigo"], "CUDA_SIN_VRAM")
 
+    def test_cuda_error_out_of_memory(self):
+        result = diagnose_memory_error(
+            RuntimeError("CUDA error: out of memory en C:/privado/modelo"), "preparacion")
+        self.assertEqual(result["codigo"], "CUDA_SIN_VRAM")
+        self.assertNotIn("privado", json.dumps(result))
+
     def test_ram_agotada(self):
         result = diagnose_memory_error(MemoryError("datos secretos"), "preparacion")
         self.assertEqual(result["codigo"], "RAM_AGOTADA")
