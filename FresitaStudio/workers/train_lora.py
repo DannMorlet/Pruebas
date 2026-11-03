@@ -11,7 +11,7 @@ from importlib import metadata
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from fresita_core import validate_eval_pair, evaluation_summary
 from fresita_metrics import append_metrics, evaluation_fingerprints
-from fresita_training_diagnostics import run_training_stage
+from fresita_training_diagnostics import run_training_stage, report_terminal_failure
 from fresita_checkpoints import sft_training_kwargs
 from fresita_resume import prepare_training_run, installed_runtime_versions
 
@@ -175,7 +175,8 @@ def main():
 
 if __name__=="__main__":
     try:main()
-    except Exception:
-        import traceback
-        traceback.print_exc()
+    except Exception as exc:
+        if not report_terminal_failure(exc):
+            import traceback
+            traceback.print_exc()
         sys.exit(1)
