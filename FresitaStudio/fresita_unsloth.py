@@ -128,7 +128,7 @@ def format_unsloth_report(report):
         "Esta revisión sólo lee metadatos e interroga CUDA. No importa Unsloth,",
         "no descarga modelos y NO confirma compatibilidad de kernels,",
         "entrenamiento Unsloth ni ahorro de VRAM en la RTX 5060.",
-        "El entrenamiento actual de Fresita continúa usando TRL/PEFT.",
+        "TRL/PEFT es la opción predeterminada; Unsloth es experimental.",
         "No se instala Unsloth ni se modifica el entorno existente."
     ]
     return "\n".join(lines)
