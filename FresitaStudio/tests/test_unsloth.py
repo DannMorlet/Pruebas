@@ -88,6 +88,8 @@ class UnslothCheckTests(unittest.TestCase):
         self.assertIn("sin validar entrenamiento",result)
         self.assertNotIn("TOKEN_PRIVADO",result)
         self.assertIn("TRL/PEFT",result)
+        self.assertIn("Unsloth es experimental",result)
+        self.assertNotIn("continúa usando TRL/PEFT",result)
     def test_no_confunde_ausente_con_compatible(self):
         result=format_unsloth_report(sample(False))
         self.assertIn("no instalado",result)
