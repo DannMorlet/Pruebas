@@ -29,6 +29,17 @@ class MemoryDiagnosticsTests(unittest.TestCase):
         self.assertEqual(result["codigo"], "CUDA_SIN_VRAM")
         self.assertNotIn("privado", json.dumps(result))
 
+    def test_cpu_allocator_ram_agotada_sin_filtrar_datos(self):
+        for message in (
+            "DefaultCPUAllocator: not enough memory en C:/privado/dataset.jsonl",
+            "DefaultCPUAllocator: can\u0027t allocate memory en C:/privado/modelo",
+            "std::bad_alloc en C:/privado/pesos",
+        ):
+            with self.subTest(message=message.split(" en ")[0]):
+                result = diagnose_memory_error(RuntimeError(message), "entrenamiento")
+                self.assertEqual(result["codigo"], "RAM_AGOTADA")
+                self.assertNotIn("privado", json.dumps(result))
+
     def test_ram_agotada(self):
         result = diagnose_memory_error(MemoryError("datos secretos"), "preparacion")
         self.assertEqual(result["codigo"], "RAM_AGOTADA")
