@@ -39,6 +39,7 @@ def diagnose_memory_error(exc, stage):
         "cuda out of memory" in message
         or "cublas_status_alloc_failed" in message
         or "cudnn_status_alloc_failed" in message
+        or "cudaerrormemoryallocation" in message
         or "cuda error: out of memory" in message
         or (type(exc).__name__ == "OutOfMemoryError"
             and type(exc).__module__.startswith("torch.cuda"))
