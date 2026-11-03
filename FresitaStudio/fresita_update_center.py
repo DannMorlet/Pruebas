@@ -165,14 +165,15 @@ def driver_major(runner=None):
 
 def cuda_smoke(python, *, unsloth=False, run=None):
     """Valida ejecución CUDA mínima con la GPU real, sin descargar modelos."""
-    code = ("import torch\n"
+    # Unsloth debe parchear el runtime ANTES de importar PyTorch.
+    # Importarlo después de usar CUDA puede dejar kernels sin parchear.
+    prefix = "import unsloth\n" if unsloth else ""
+    code = prefix + ("import torch\n"
       "assert torch.cuda.is_available(), 'Sin GPU CUDA'\n"
       "x=torch.ones((32,32),device='cuda')\n"
       "y=(x @ x).sum().item()\n"
       "assert abs(y - 32768)<1, 'Resultado CUDA incorrecto'\n"
       "torch.cuda.synchronize()\n")
-    if unsloth:
-        code+="import unsloth\n"
     if run is None:
         run=subprocess.run
     result=run([str(python),"-I","-c",code],stdin=subprocess.DEVNULL,
