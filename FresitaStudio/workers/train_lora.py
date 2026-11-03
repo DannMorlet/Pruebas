@@ -55,6 +55,17 @@ def load_unsloth_model(model_id, rank, qlora, fast_language_model):
     return model, tokenizer
 
 
+def import_unsloth_safely(importer=None):
+    """Importar Unsloth antes de PyTorch y devolver un fallo sin datos privados."""
+    if importer is None:
+        import importlib
+        importer = importlib.import_module
+    try:
+        return importer("unsloth").FastLanguageModel, False
+    except Exception:
+        return None, True
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--config",required=True)
@@ -64,8 +75,9 @@ def main():
     backend=validate_backend(cfg)
     # Unsloth debe importarse antes de torch/transformers/TRL para aplicar sus parches.
     # En --preflight no se importa Unsloth ni se cargan pesos.
+    unsloth_import_failed = False
     if backend == "unsloth" and not args.preflight:
-        from unsloth import FastLanguageModel
+        FastLanguageModel, unsloth_import_failed = import_unsloth_safely()
     else:
         FastLanguageModel = None
     from fresita_train_preflight import inspect_environment
@@ -77,6 +89,9 @@ def main():
             report["dependencias"]["unsloth"] = None
             report["errores"].append("Falta Unsloth en el entorno aislado.")
             report["ok"] = False
+    if unsloth_import_failed:
+        report["errores"].append("No se pudo importar Unsloth. Revisa la instalación y compatibilidad de sus dependencias.")
+        report["ok"] = False
     print("DIAGNÓSTICO CUDA:",json.dumps(report,ensure_ascii=False),flush=True)
     if not report["ok"]:
         raise RuntimeError("Entorno de entrenamiento incompleto: "+"; ".join(report["errores"]))
