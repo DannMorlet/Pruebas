@@ -29,6 +29,12 @@ class MemoryDiagnosticsTests(unittest.TestCase):
         self.assertEqual(result["codigo"], "CUDA_SIN_VRAM")
         self.assertNotIn("privado", json.dumps(result))
 
+    def test_cuda_error_memory_allocation_sin_filtrar_datos(self):
+        result = diagnose_memory_error(
+            RuntimeError("CUDA error: cudaErrorMemoryAllocation en C:/privado/modelo"), "carga")
+        self.assertEqual(result["codigo"], "CUDA_SIN_VRAM")
+        self.assertNotIn("privado", json.dumps(result))
+
     def test_cuda_error_out_of_memory(self):
         result = diagnose_memory_error(
             RuntimeError("CUDA error: out of memory en C:/privado/modelo"), "preparacion")
