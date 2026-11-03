@@ -108,7 +108,7 @@ class CenterTests(unittest.TestCase):
         self.assertEqual(len(commands),1)
         self.assertEqual(commands[0][1:3],["-I","-c"])
         script=commands[0][3]
-        self.assertLess(script.index("import unsloth\\n"),script.index("import torch\\n"))
+        self.assertLess(script.index("import unsloth\n"),script.index("import torch\n"))
         self.assertIn("torch.cuda.synchronize()",script)
 
     def test_trl_no_importa_unsloth_en_prueba_cuda(self):
@@ -119,7 +119,7 @@ class CenterTests(unittest.TestCase):
         c.cuda_smoke("python.exe",unsloth=False,run=runner)
         self.assertEqual(len(commands),1)
         script=commands[0][3]
-        self.assertIn("import torch\\n",script)
+        self.assertIn("import torch\n",script)
         self.assertNotIn("import unsloth",script)
 
     def test_configuracion_no_modifica_driver(self):
