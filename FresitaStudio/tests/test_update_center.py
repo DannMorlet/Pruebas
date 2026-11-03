@@ -99,6 +99,29 @@ class CenterTests(unittest.TestCase):
     def test_activacion_rechaza_entorno_incompleto(self):
         with self.assertRaises(ValueError):
             c.activate("unsloth","u1",self.root)
+    def test_unsloth_se_importa_antes_de_torch_en_prueba_cuda(self):
+        commands=[]
+        def runner(command, **kwargs):
+            commands.append(command)
+            return types.SimpleNamespace(returncode=0)
+        c.cuda_smoke("python.exe",unsloth=True,run=runner)
+        self.assertEqual(len(commands),1)
+        self.assertEqual(commands[0][1:3],["-I","-c"])
+        script=commands[0][3]
+        self.assertLess(script.index("import unsloth\\n"),script.index("import torch\\n"))
+        self.assertIn("torch.cuda.synchronize()",script)
+
+    def test_trl_no_importa_unsloth_en_prueba_cuda(self):
+        commands=[]
+        def runner(command, **kwargs):
+            commands.append(command)
+            return types.SimpleNamespace(returncode=0)
+        c.cuda_smoke("python.exe",unsloth=False,run=runner)
+        self.assertEqual(len(commands),1)
+        script=commands[0][3]
+        self.assertIn("import torch\\n",script)
+        self.assertNotIn("import unsloth",script)
+
     def test_configuracion_no_modifica_driver(self):
         self.assertNotIn("pip install nvidia",str(c.update_component))
         self.assertNotIn("nvidia-driver",c.TORCH_PROFILE)
