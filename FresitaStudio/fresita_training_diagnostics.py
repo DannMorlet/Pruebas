@@ -22,6 +22,19 @@ def diagnose_memory_error(exc, stage):
     if not isinstance(exc, RuntimeError):
         return None
     message = str(exc).casefold()
+    is_ram_oom = (
+        "defaultcpuallocator: not enough memory" in message
+        or "defaultcpuallocator: can\u0027t allocate memory" in message
+        or "std::bad_alloc" in message
+    )
+    if is_ram_oom:
+        return {
+            "codigo": "RAM_AGOTADA", "etapa": stage,
+            "acciones": [
+                "Cierra aplicaciones que consuman RAM y revisa el archivo de paginación de Windows.",
+                "Reduce el tamaño del modelo o de los lotes antes de repetir; no se modificaron los pesos originales.",
+            ],
+        }
     is_cuda_oom = (
         "cuda out of memory" in message
         or "cublas_status_alloc_failed" in message
