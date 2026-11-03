@@ -4,7 +4,7 @@ import sys
 import unittest
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from workers.train_lora import validate_backend, load_unsloth_model
+from workers.train_lora import validate_backend, load_unsloth_model, import_unsloth_safely
 
 
 class FakeFastLanguageModel:
@@ -54,6 +54,20 @@ class BackendTests(unittest.TestCase):
                 self.assertEqual(FakeFastLanguageModel.adapter["lora_alpha"],16)
                 self.assertEqual(FakeFastLanguageModel.adapter["use_gradient_checkpointing"],"unsloth")
                 self.assertIsInstance(tok,FakeTokenizer)
+
+    def test_importacion_unsloth_correcta(self):
+        class Modulo:
+            FastLanguageModel = FakeFastLanguageModel
+        modelo, fallo = import_unsloth_safely(lambda nombre: Modulo if nombre == "unsloth" else None)
+        self.assertIs(modelo, FakeFastLanguageModel)
+        self.assertFalse(fallo)
+
+    def test_importacion_unsloth_fallida_sin_filtrar_rutas(self):
+        def importar(_nombre):
+            raise RuntimeError("C:/datos-privados/modelo/secreto.bin")
+        modelo, fallo = import_unsloth_safely(importar)
+        self.assertIsNone(modelo)
+        self.assertTrue(fallo)
 
     def test_valida_argumentos_sin_descargas(self):
         for model,rank,qlora in (("",8,False),("x",0,False),("x",129,False),("x",8,"sí")):
