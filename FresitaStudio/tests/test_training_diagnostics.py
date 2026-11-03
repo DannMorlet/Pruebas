@@ -7,7 +7,7 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fresita_training_diagnostics import diagnose_memory_error, run_training_stage
+from fresita_training_diagnostics import diagnose_memory_error, run_training_stage, report_terminal_failure
 
 
 class MemoryDiagnosticsTests(unittest.TestCase):
@@ -87,6 +87,25 @@ class MemoryDiagnosticsTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "otro fallo"):
                 run_training_stage("carga", lambda: (_ for _ in ()).throw(RuntimeError("otro fallo")))
         self.assertEqual(buffer.getvalue(), "")
+
+    def test_fallo_final_memoria_no_revela_rutas(self):
+        for error in (
+            RuntimeError("CUDA out of memory en C:/privado/pesos.bin"),
+            RuntimeError("DefaultCPUAllocator: not enough memory C:/privado/datos.jsonl"),
+            MemoryError("C:/privado/modelo"),
+        ):
+            with self.subTest(tipo=type(error).__name__):
+                output = StringIO()
+                with redirect_stderr(output):
+                    self.assertTrue(report_terminal_failure(error))
+                self.assertIn("FRESITA_ERROR_FINAL", output.getvalue())
+                self.assertNotIn("privado", output.getvalue())
+
+    def test_fallo_final_ordinario_conserva_traceback(self):
+        output = StringIO()
+        with redirect_stderr(output):
+            self.assertFalse(report_terminal_failure(ValueError("C:/privado/config.json")))
+        self.assertEqual(output.getvalue(), "")
 
     def test_etapa_desconocida_no_ejecuta(self):
         called = []
