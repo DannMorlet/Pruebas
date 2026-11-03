@@ -89,6 +89,13 @@ def main():
             report["dependencias"]["unsloth"] = None
             report["errores"].append("Falta Unsloth en el entorno aislado.")
             report["ok"] = False
+        except (ValueError, OSError, TypeError) as exc:
+            # No incluir str(exc): podría contener rutas privadas.
+            report["dependencias"]["unsloth"] = None
+            report["errores"].append(
+                "No se pudo consultar la versión de Unsloth (" + type(exc).__name__ + ")."
+            )
+            report["ok"] = False
     if unsloth_import_failed:
         report["errores"].append("No se pudo importar Unsloth. Revisa la instalación y compatibilidad de sus dependencias.")
         report["ok"] = False
