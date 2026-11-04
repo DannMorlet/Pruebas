@@ -47,7 +47,10 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
                 raise TypeError("Disponibilidad CUDA inválida")
             if cuda_available:
                 report["cuda_disponible"] = True
-                report["gpu"] = str(torch.cuda.get_device_name(0))[:100]
+                gpu_name = torch.cuda.get_device_name(0)
+                if not isinstance(gpu_name, str) or not gpu_name.strip():
+                    raise ValueError("Nombre de GPU CUDA inválido")
+                report["gpu"] = gpu_name.strip()[:100]
                 props = torch.cuda.get_device_properties(0)
                 total_bytes = props.total_memory
                 if type(total_bytes) is not int or total_bytes <= 0:
