@@ -65,6 +65,21 @@ class TrainingPreflightTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertIn("Falta la dependencia: bitsandbytes", result["errores"])
 
+    def test_error_tipo_metadatos_no_filtra_ruta_privada(self):
+        secreto = "C:/Usuarios/privado/dataset.jsonl"
+
+        def broken(name):
+            if name == "trl":
+                raise TypeError(secreto)
+            return "1.0"
+
+        result = inspect_environment(version_lookup=broken,
+                                     torch_module=SimpleNamespace(cuda=FakeCuda()))
+        self.assertFalse(result["ok"])
+        self.assertIsNone(result["dependencias"]["trl"])
+        self.assertIn("No se pudo consultar trl: TypeError", result["errores"])
+        self.assertNotIn(secreto, str(result))
+
     def test_cuda_no_disponible_no_finge_exito(self):
         result = inspect_environment(version_lookup=versions,
                                      torch_module=SimpleNamespace(cuda=FakeCuda(False)))
