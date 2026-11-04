@@ -70,7 +70,11 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
                     report["avisos"].append("VRAM limitada: reduce longitud, lote o tamaño del modelo si hay OOM.")
             else:
                 report["errores"].append("PyTorch no detecta una GPU CUDA disponible.")
-        except (ImportError, OSError, RuntimeError, AttributeError, ValueError) as exc:
+        except (ImportError, OSError, RuntimeError, AttributeError, ValueError, TypeError) as exc:
+            report["cuda_disponible"] = False
+            report["gpu"] = None
+            report["vram_total_mib"] = None
+            report["vram_libre_mib"] = None
             report["errores"].append("No se pudo inicializar CUDA: " + type(exc).__name__)
     if qlora and report["dependencias"].get("bitsandbytes") is not None:
         report["avisos"].append("bitsandbytes instalado: falta verificar su compatibilidad real con CUDA/Windows y el modelo.")
