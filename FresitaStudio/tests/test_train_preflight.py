@@ -94,6 +94,19 @@ class TrainingPreflightTests(unittest.TestCase):
                 self.assertIsNone(result["vram_libre_mib"])
                 self.assertTrue(any("No se pudo inicializar CUDA" in e for e in result["errores"]))
 
+    def test_cuda_disponibilidad_no_booleana_se_rechaza(self):
+        for value in ("False", 1, None):
+            with self.subTest(value=value):
+                result = inspect_environment(
+                    version_lookup=versions,
+                    torch_module=SimpleNamespace(cuda=FakeCuda(value)),
+                )
+                self.assertFalse(result["ok"])
+                self.assertFalse(result["cuda_disponible"])
+                self.assertIsNone(result["gpu"])
+                self.assertIsNone(result["vram_total_mib"])
+                self.assertIn("No se pudo inicializar CUDA: TypeError", result["errores"])
+
     def test_cuda_no_disponible_no_finge_exito(self):
         result = inspect_environment(version_lookup=versions,
                                      torch_module=SimpleNamespace(cuda=FakeCuda(False)))
