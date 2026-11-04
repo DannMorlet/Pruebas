@@ -63,8 +63,8 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
                     try:
                         libre, total_reportado = mem_info(0)
                         if (type(libre) is int and type(total_reportado) is int
-                                and total_reportado > 0 and 0 <= libre <= total_reportado
-                                and libre <= total_bytes):
+                                and 0 < total_reportado <= total_bytes
+                                and 0 <= libre <= total_reportado):
                             report["vram_libre_mib"] = libre // (1024 * 1024)
                             if libre < 2 * 1024**3:
                                 report["avisos"].append(
