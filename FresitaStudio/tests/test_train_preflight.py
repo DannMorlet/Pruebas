@@ -171,6 +171,18 @@ class TrainingPreflightTests(unittest.TestCase):
         self.assertIsNone(result["vram_libre_mib"])
         self.assertTrue(any("VRAM libre inválida" in s for s in result["avisos"]))
 
+    def test_vram_libre_superior_a_capacidad_fisica_no_se_reporta(self):
+        cuda = FakeCudaMemory(free_mib=9000, total_mib=12000)
+        cuda.mib = 8192
+        result = inspect_environment(
+            version_lookup=versions,
+            torch_module=SimpleNamespace(cuda=cuda),
+        )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["vram_total_mib"], 8192)
+        self.assertIsNone(result["vram_libre_mib"])
+        self.assertTrue(any("VRAM libre inválida" in s for s in result["avisos"]))
+
     def test_fallo_de_lectura_vram_libre_no_impide_preflight(self):
         cuda = FakeCudaMemory(error=RuntimeError("No disponible"))
         result = inspect_environment(version_lookup=versions,
