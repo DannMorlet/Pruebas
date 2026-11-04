@@ -32,7 +32,10 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
         report["avisos"].append("Python 3.12 x64 es la versión recomendada para este proyecto.")
     for package in REQUIRED + (("bitsandbytes",) if qlora else ()):
         try:
-            report["dependencias"][package] = str(lookup(package))
+            version = lookup(package)
+            if not isinstance(version, str) or not version.strip():
+                raise ValueError("Versión de dependencia inválida")
+            report["dependencias"][package] = version.strip()
         except metadata.PackageNotFoundError:
             report["dependencias"][package] = None
             report["errores"].append("Falta la dependencia: " + package)
