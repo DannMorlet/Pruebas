@@ -188,5 +188,20 @@ class TrainingPreflightTests(unittest.TestCase):
         self.assertIn("No se pudo inicializar CUDA: TypeError", result["errores"])
         self.assertNotIn(secreto, str(result))
 
+    def test_nombre_gpu_invalido_no_finge_cuda_lista(self):
+        for name in (None, "", "   ", 123):
+            with self.subTest(name=name):
+                cuda = FakeCuda()
+                cuda.get_device_name = lambda index, value=name: value
+                result = inspect_environment(
+                    version_lookup=versions,
+                    torch_module=SimpleNamespace(cuda=cuda),
+                )
+                self.assertFalse(result["ok"])
+                self.assertFalse(result["cuda_disponible"])
+                self.assertIsNone(result["gpu"])
+                self.assertIsNone(result["vram_total_mib"])
+                self.assertIn("No se pudo inicializar CUDA: ValueError", result["errores"])
+
 if __name__ == "__main__":
     unittest.main()
