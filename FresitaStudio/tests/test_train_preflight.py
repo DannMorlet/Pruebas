@@ -160,5 +160,20 @@ class TrainingPreflightTests(unittest.TestCase):
         self.assertIsNone(result["vram_libre_mib"])
 
 
+    def test_error_cuda_tipo_no_expone_ruta_privada(self):
+        secreto = "C:/Usuarios/privado/pesos/modelo.safetensors"
+        cuda = FakeCuda()
+        def fallo(index):
+            raise TypeError(secreto)
+        cuda.get_device_name = fallo
+        result = inspect_environment(version_lookup=versions,
+                                     torch_module=SimpleNamespace(cuda=cuda))
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["cuda_disponible"])
+        self.assertIsNone(result["gpu"])
+        self.assertIsNone(result["vram_total_mib"])
+        self.assertIn("No se pudo inicializar CUDA: TypeError", result["errores"])
+        self.assertNotIn(secreto, str(result))
+
 if __name__ == "__main__":
     unittest.main()
