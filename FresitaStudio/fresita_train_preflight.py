@@ -72,7 +72,7 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
                                 )
                         else:
                             report["avisos"].append("CUDA devolvió VRAM libre inválida; se muestra N/D.")
-                    except (RuntimeError, OSError, ValueError, TypeError, AttributeError) as exc:
+                    except (RuntimeError, OSError, ValueError, TypeError, AttributeError, OverflowError) as exc:
                         report["avisos"].append(
                             "No se pudo consultar VRAM libre (" + type(exc).__name__ + "); se muestra N/D."
                         )
@@ -80,7 +80,7 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
                     report["avisos"].append("VRAM limitada: reduce longitud, lote o tamaño del modelo si hay OOM.")
             else:
                 report["errores"].append("PyTorch no detecta una GPU CUDA disponible.")
-        except (ImportError, OSError, RuntimeError, AttributeError, ValueError, TypeError) as exc:
+        except (ImportError, OSError, RuntimeError, AttributeError, ValueError, TypeError, OverflowError) as exc:
             report["cuda_disponible"] = False
             report["gpu"] = None
             report["vram_total_mib"] = None
