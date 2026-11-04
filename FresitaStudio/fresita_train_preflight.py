@@ -46,7 +46,10 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
                 report["cuda_disponible"] = True
                 report["gpu"] = str(torch.cuda.get_device_name(0))[:100]
                 props = torch.cuda.get_device_properties(0)
-                report["vram_total_mib"] = int(props.total_memory) // (1024 * 1024)
+                total_bytes = props.total_memory
+                if type(total_bytes) is not int or total_bytes <= 0:
+                    raise ValueError("Memoria total CUDA inválida")
+                report["vram_total_mib"] = total_bytes // (1024 * 1024)
                 # Instantánea CUDA del dispositivo 0: no es VRAM exclusiva del modelo.
                 # Bajo WDDM puede variar inmediatamente después de la consulta.
                 mem_info = getattr(torch.cuda, "mem_get_info", None)
