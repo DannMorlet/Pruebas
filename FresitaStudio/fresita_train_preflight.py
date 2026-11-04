@@ -42,7 +42,10 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
     if report["dependencias"]["torch"] is not None:
         try:
             torch = torch_module if torch_module is not None else importlib.import_module("torch")
-            if torch.cuda.is_available():
+            cuda_available = torch.cuda.is_available()
+            if type(cuda_available) is not bool:
+                raise TypeError("Disponibilidad CUDA inválida")
+            if cuda_available:
                 report["cuda_disponible"] = True
                 report["gpu"] = str(torch.cuda.get_device_name(0))[:100]
                 props = torch.cuda.get_device_properties(0)
