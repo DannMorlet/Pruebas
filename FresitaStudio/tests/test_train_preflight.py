@@ -80,6 +80,20 @@ class TrainingPreflightTests(unittest.TestCase):
         self.assertIn("No se pudo consultar trl: TypeError", result["errores"])
         self.assertNotIn(secreto, str(result))
 
+    def test_cuda_memoria_total_invalida_no_finge_exito(self):
+        for total in (0, -1, None, "8192"):
+            with self.subTest(total=total):
+                cuda = FakeCuda()
+                cuda.get_device_properties = lambda index, value=total: SimpleNamespace(total_memory=value)
+                result = inspect_environment(version_lookup=versions,
+                                             torch_module=SimpleNamespace(cuda=cuda))
+                self.assertFalse(result["ok"])
+                self.assertFalse(result["cuda_disponible"])
+                self.assertIsNone(result["gpu"])
+                self.assertIsNone(result["vram_total_mib"])
+                self.assertIsNone(result["vram_libre_mib"])
+                self.assertTrue(any("No se pudo inicializar CUDA" in e for e in result["errores"]))
+
     def test_cuda_no_disponible_no_finge_exito(self):
         result = inspect_environment(version_lookup=versions,
                                      torch_module=SimpleNamespace(cuda=FakeCuda(False)))
