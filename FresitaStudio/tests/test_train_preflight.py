@@ -228,5 +228,28 @@ class TrainingPreflightTests(unittest.TestCase):
                 self.assertIsNone(result["vram_total_mib"])
                 self.assertIn("No se pudo inicializar CUDA: ValueError", result["errores"])
 
+    def test_versiones_dependencias_invalidas_bloquean_entrenamiento(self):
+        for version in (None, "", "   ", 123, False):
+            with self.subTest(version=version):
+                def lookup(name):
+                    return version if name == "trl" else "1.0"
+                result = inspect_environment(
+                    version_lookup=lookup,
+                    torch_module=SimpleNamespace(cuda=FakeCuda()),
+                )
+                self.assertFalse(result["ok"])
+                self.assertIsNone(result["dependencias"]["trl"])
+                self.assertIn("No se pudo consultar trl: ValueError", result["errores"])
+
+    def test_version_con_espacios_se_normaliza(self):
+        def lookup(name):
+            return " 1.2.3 " if name == "trl" else "1.0"
+        result = inspect_environment(
+            version_lookup=lookup,
+            torch_module=SimpleNamespace(cuda=FakeCuda()),
+        )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["dependencias"]["trl"], "1.2.3")
+
 if __name__ == "__main__":
     unittest.main()
