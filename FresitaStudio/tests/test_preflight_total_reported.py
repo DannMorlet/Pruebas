@@ -28,6 +28,26 @@ class MemoriaCUDAInconsistenteTests(unittest.TestCase):
         self.assertIsNone(report["vram_libre_mib"])
         self.assertTrue(any("VRAM libre inválida" in aviso for aviso in report["avisos"]))
 
+    def test_total_reportado_menor_a_un_mib_se_descarta(self):
+        fisica = 8 * 1024**3
+        for reportado in (1, 1024, 1024**2 - 1):
+            with self.subTest(total_reportado=reportado):
+                cuda = SimpleNamespace(
+                    is_available=lambda: True,
+                    get_device_name=lambda index: "NVIDIA RTX 5060",
+                    get_device_properties=lambda index: SimpleNamespace(total_memory=fisica),
+                    mem_get_info=lambda index: (0, reportado),
+                )
+                report = inspect_environment(
+                    version_lookup=lambda package: "1.0",
+                    torch_module=SimpleNamespace(cuda=cuda),
+                )
+                self.assertTrue(report["ok"])
+                self.assertTrue(report["cuda_disponible"])
+                self.assertEqual(report["vram_total_mib"], 8192)
+                self.assertIsNone(report["vram_libre_mib"])
+                self.assertTrue(any("VRAM libre inválida" in aviso for aviso in report["avisos"]))
+
     def test_total_reportado_igual_al_fisico_se_acepta(self):
         fisica = 8 * 1024**3
         cuda = SimpleNamespace(
