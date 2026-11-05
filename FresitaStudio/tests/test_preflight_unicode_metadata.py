@@ -14,7 +14,7 @@ class UnicodeMetadataTests(unittest.TestCase):
 
         def lookup(package):
             if package == "peft":
-                raise UnicodeDecodeError("utf-8", b"\\xff", 0, 1, secret)
+                raise UnicodeDecodeError("utf-8", bytes([255]), 0, 1, secret)
             return "1.0"
 
         cuda = SimpleNamespace(is_available=lambda: False)
