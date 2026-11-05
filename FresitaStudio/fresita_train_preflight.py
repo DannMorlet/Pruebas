@@ -39,7 +39,7 @@ def inspect_environment(qlora=False, *, version_lookup=None, torch_module=None):
         except metadata.PackageNotFoundError:
             report["dependencias"][package] = None
             report["errores"].append("Falta la dependencia: " + package)
-        except (ValueError, OSError, TypeError) as exc:
+        except (ValueError, OSError, TypeError, OverflowError) as exc:
             report["dependencias"][package] = None
             report["errores"].append("No se pudo consultar " + package + ": " + type(exc).__name__)
     if report["dependencias"]["torch"] is not None:
