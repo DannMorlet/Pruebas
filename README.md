@@ -1,5 +1,7 @@
 # Gaming / Matick · Morlet Workspace
 
+> 📚 **Organización y limpieza 2026-11-06:** [Mapa de los cuatro proyectos y su mantenimiento](docs/MAPA_REPOSITORIOS_MORLET.md). PR y ramas preservados; consulta el plan antes de fusionar.
+
 > **Estado:** prototipo visual y especificación de producto. **NO está integrado a LM Studio y NO modifica sus MCP ni su ejecutable.**
 >
 > Diseño de referencia: ChatGPT/Codex, adaptado a **LM Studio 0.4.26**, Windows 11 y los modelos locales del usuario.
