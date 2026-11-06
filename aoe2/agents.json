@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "project": "Morlet AoE2DE — siete IAs",
+  "status": "specifications_received_awaiting_implementation",
+  "ai_count": 7,
+  "game": "Age of Empires II Definitive Edition",
+  "bridge": {
+    "provider": "AoE2Control Agent Bridge v3",
+    "enabled": false,
+    "mode": "single_player_only",
+    "omniscient": false,
+    "use_user_mouse_keyboard": false,
+    "execute_by_default": false,
+    "allow_remote_command_execution": false
+  },
+  "resources": {
+    "fair_play": true,
+    "bonus_enabled": false,
+    "bonuses_by_age": {
+      "dark": 50,
+      "feudal": 100,
+      "castle": 200,
+      "imperial": 500
+    },
+    "bonus_resource_choices": [
+      "food",
+      "wood",
+      "gold",
+      "stone"
+    ],
+    "bonus_cooldown_seconds_min": 900,
+    "max_bonus_events_per_age": 2,
+    "tribes_transfer_from_owned_stock_only": true
+  },
+  "chat": {
+    "target_phrases_per_ai": 500,
+    "implemented_phrases_per_ai": 0,
+    "minimum_delay_seconds": 120,
+    "read_and_reply_to_chat": false
+  },
+  "lm_studio": {
+    "api_base": "http://127.0.0.1:1234/v1",
+    "automatic_model_loading": false,
+    "loaded_model_id": null
+  },
+  "gpu_subagents": {
+    "shared_model_preferred": true,
+    "inference_enabled": false,
+    "shared_option": {
+      "model_family": "SmolLM2-360M-Instruct",
+      "quantization": "Q8_0",
+      "model_file_size_mb_approx": 386,
+      "alternative_quantization": "Q4_K_M",
+      "alternative_file_size_mb_approx": 271
+    },
+    "dual_option": {
+      "model_family": "SmolLM2-135M-Instruct",
+      "quantization": "Q8_0",
+      "model_file_size_mb_per_agent_approx": 145
+    },
+    "disk_size_is_not_runtime_ram_vram_budget": true,
+    "max_inference_output_tokens": 128,
+    "simulated_responses_only_by_default": true,
+    "shared_model_reminder": "Recordar al usuario, cuando se retome Tyran/Mazapan, probar UN modelo SmolLM2-360M-Instruct en RTX 5060 para dos agentes lógicos con memoria/prompt independientes; no son dos mitades físicas del modelo, y el consumo de VRAM puede superar el tamaño del GGUF.",
+    "shared_model_status": "planned_unverified",
+    "shared_model_approved_for_testing": true
+  },
+  "agents": [
+    {
+      "number": 1,
+      "name": "Matick",
+      "per": "Matick.per",
+      "ai": "Matick.ai",
+      "source": "Agua_de_Morlet.per",
+      "engine": "lm_studio_gpu",
+      "description": "LLM de Matick cargado por el usuario en RTX 5060",
+      "ready": false,
+      "external_sidecar": "Matick.py",
+      "per_support_folder": "Morlet7_Matick_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
+    },
+    {
+      "number": 2,
+      "name": "Nemesis",
+      "per": "Nemesis.per",
+      "ai": "Nemesis.ai",
+      "source": "Nemesis.per",
+      "engine": "openvino_intel_npu_experimental",
+      "description": "Nemesis (#2): Qwen3-0.6B descargado en C:\\NPU según el usuario; uso en Intel NPU experimental y sin verificación de compatibilidad",
+      "ready": false,
+      "model_user_reported_name": "Qwen3-0.6B",
+      "local_model_directory": "C:\\NPU",
+      "download_status": "El usuario confirmó descarga; formato y archivos exactos pendientes de comprobar",
+      "npu_execution_status": "Pendiente verificar OpenVINO + Intel NPU; descargado no significa compatible ni funcionando",
+      "local_model_autoload": false,
+      "external_sidecar": "Nemesis.py",
+      "per_support_folder": "Morlet7_Nemesis_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
+    },
+    {
+      "number": 3,
+      "name": "Tyran",
+      "per": "Tyran.per",
+      "ai": "Tyran.ai",
+      "source": "Agua_de_Mazapan.per",
+      "engine": "gpu_small_agent",
+      "role_key": "tyran",
+      "description": "Prioridad propuesta: maniobra militar",
+      "ready": false,
+      "external_sidecar": "Tyran.py",
+      "per_support_folder": "Morlet7_Tyran_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
+    },
+    {
+      "number": 4,
+      "name": "Mazapan",
+      "per": "Mazapan.per",
+      "ai": "Mazapan.ai",
+      "source": "Capuchino_de-Mazapan.per",
+      "engine": "gpu_small_agent",
+      "role_key": "mazapan",
+      "description": "Prioridad propuesta: economía creativa y supervivencia",
+      "ready": false,
+      "external_sidecar": "Mazapan.py",
+      "per_support_folder": "Morlet7_Mazapan_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
+    },
+    {
+      "number": 5,
+      "name": "Nutella",
+      "per": "Nutella.per",
+      "ai": "Nutella.ai",
+      "source": "AI (HD version).per",
+      "engine": "per_rules",
+      "description": "Desgaste estratégico: expansión discreta, hostigamiento económico, recuperación y bases ocultas",
+      "ready": false,
+      "personality": {
+        "source": "user_chat_2026-10-29",
+        "aggression": 65,
+        "economy_primary": 85,
+        "annoyance": 100,
+        "patience": 95,
+        "chaos": 90,
+        "source_example_economy_secondary": 90,
+        "expansion": 95,
+        "direct_conquest": 40,
+        "villager_raids": 100,
+        "sneaky_bases": 100,
+        "never_fight_fair_interpretation": "táctica sorprendente sin hacks ni recursos artificiales"
+      },
+      "logical_subagents": [
+        "Untador",
+        "Hormiga",
+        "Chocolate Negro",
+        "Avellana",
+        "Empalagador Supremo"
+      ],
+      "design_received": true,
+      "implementation_stage": "specified_only",
+      "external_sidecar": "Nutella.py",
+      "per_support_folder": "Morlet7_Nutella_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
+    },
+    {
+      "number": 6,
+      "name": "Gemini",
+      "per": "Gemini.per",
+      "ai": "Gemini.ai",
+      "source": "AI (HD version).per",
+      "engine": "per_rules",
+      "description": "Operaciones tácticas coordinadas: Tesorero, Explorador y ataques sincronizados",
+      "awaiting_external_proposal": false,
+      "ready": false,
+      "design_received": true,
+      "design_source": "Gemini Manual para IA de Empires 2 de .pdf (2 pages)",
+      "personality": {
+        "aggression_level": 78,
+        "economic_efficiency": 92,
+        "flank_support_weight": 88,
+        "retreat_threshold_hp_percent": 30
+      },
+      "economic_targets_by_age": {
+        "dark": {
+          "food": 55,
+          "wood": 35,
+          "gold": 10,
+          "stone": 0
+        },
+        "feudal": {
+          "food": 45,
+          "wood": 40,
+          "gold": 15,
+          "stone": 0
+        },
+        "castle": {
+          "food": 40,
+          "wood": 35,
+          "gold": 20,
+          "stone": 5
+        },
+        "imperial": {
+          "food": 35,
+          "wood": 35,
+          "gold": 20,
+          "stone": 10
+        }
+      },
+      "logical_subagents": [
+        "Tesorero",
+        "Explorador",
+        "Coordinador de ataque por edades"
+      ],
+      "implementation_stage": "specified_only",
+      "source_caveat": "PDF uses conceptual, unverified .per fragment (#load-if-defined EDAD-*, goal in action side); requires adapting/validating, not direct copying",
+      "external_sidecar": "Gemini.py",
+      "per_support_folder": "Morlet7_Gemini_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
+    },
+    {
+      "number": 7,
+      "name": "Copilot",
+      "per": "Copilot.per",
+      "ai": "Copilot.ai",
+      "source": "AI (HD version).per",
+      "engine": "per_rules",
+      "description": "Núcleo de planificación adaptativa: información, economía, tecnología y contracomposición",
+      "awaiting_external_proposal": false,
+      "ready": false,
+      "design_received": true,
+      "design_source": "Copilot_Strategic_Core_v7_AOE.pdf (12 pages)",
+      "personality": {
+        "adaptive": 100,
+        "economy": 95,
+        "technology": 100,
+        "military": 90,
+        "exploration": 90,
+        "risk": 45,
+        "expansion": 85
+      },
+      "logical_subagents": [
+        "Comandante Supremo",
+        "Economista",
+        "Explorador",
+        "Ingeniero",
+        "General Militar",
+        "Defensor",
+        "Analista del enemigo",
+        "Logística",
+        "Predictivo",
+        "Cazador de oportunidades"
+      ],
+      "implementation_stage": "specified_only",
+      "source_caveat": "Most PDF advanced pages repeat same description and final INI/YAML is not executable .per/.ai",
+      "external_sidecar": "Copilot.py",
+      "per_support_folder": "Morlet7_Copilot_Core",
+      "per_support_source": "Original Promisory copied into isolated folder, not shipped with ZIP",
+      "external_routing_status": "preview_only_until_bridge_and_user_execute"
+    }
+  ],
+  "pending_tasks": [
+    "Auditar y validar Promisory, siete .per/.ai en juego",
+    "Probar LM Studio bridge de Matick",
+    "Probar NPU experimental Nemesis",
+    "Probar SmolLM2-360M compartido Tyran/Mazapan y medir VRAM/FPS",
+    "Traducir propuestas Nutella Gemini Copilot a reglas jugables, sin trucos, sin parálisis económica"
+  ],
+  "routing_v04": {
+    "status": "PREPARATION_ONLY_NOT_INSTALL_READY",
+    "router_model_preferred": "granite-3.1-3b-a800m-instruct",
+    "lm_studio_endpoint": "http://127.0.0.1:1234/v1",
+    "sidecar_execution": "Windows Python external process; .per and .ai CANNOT call .py",
+    "external_bridge": "AoE2Control Agent Bridge v3 (not included, not tested)",
+    "bridge_singleplayer_only": true,
+    "preview_default": true,
+    "requires_explicit_execute": true,
+    "player_ids_are_lobby_slots_not_ai_numbers": true,
+    "original_promisory_untouched": true,
+    "missing_support_files": [
+      "Promisory/defaultConstants.per",
+      "Promisory/finalingConstants.per",
+      "Promisory/finaling.per"
+    ],
+    "installation_blocker": "Before installing .per v0.4, copy the compatible original support into seven isolated folders with preparar_nucleos.py",
+    "code_package": "Morlet_AoE2DE_7IA_Router_v0_4_preparacion.zip (delivered in ChatGPT, not committed)",
+    "specialized_runtime_status": "Matick, Nemesis NPU and SmolLM2 GPU integrations pending"
+  }
+}
