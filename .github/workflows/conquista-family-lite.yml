@@ -1,0 +1,31 @@
+name: Conquista Family Lite CI
+on:
+  pull_request:
+    paths:
+      - 'experiments/conquista-family-lite/**'
+      - '.github/workflows/conquista-family-lite.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lite-format-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run compatibility tests
+        working-directory: experiments/conquista-family-lite
+        run: python -m unittest discover -s tests -v
+      - name: Verify command line generation 1.0
+        working-directory: experiments/conquista-family-lite
+        run: python family_lite.py --edition data/editions/lite.family.json --item data/items/katana.level5.family.json --generation 1.0
+      - name: Verify command line generation 2.0
+        working-directory: experiments/conquista-family-lite
+        run: python family_lite.py --edition data/editions/lite.family.json --item data/items/katana.level5.family.json --generation 2.0
