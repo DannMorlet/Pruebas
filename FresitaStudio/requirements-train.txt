@@ -1,0 +1,8 @@
+# Dependencias OPCIONALES. La GUI abre sin estos paquetes.
+transformers>=4.51
+datasets>=3.6
+accelerate>=1.8
+peft>=0.17
+trl>=0.20
+safetensors>=0.5
+# Para QLoRA instalar bitsandbytes sólo tras confirmar compatibilidad CUDA/Windows.
