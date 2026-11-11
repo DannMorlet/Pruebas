@@ -21,12 +21,16 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ['3.11']
+        # 3.15 usa el parche estable más reciente (3.15.2 al 2026-11-11).
+        # 3.11 se conserva para detectar regresiones.
+        python-version: ['3.11', '3.15']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Mostrar version de Python
+        run: python --version
       - name: Test core guard
         run: python -m unittest discover -s matick_codex_guard/tests -v
