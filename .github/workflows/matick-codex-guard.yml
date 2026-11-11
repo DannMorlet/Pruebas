@@ -1,0 +1,32 @@
+name: Matick Codex Guard tests
+
+on:
+  push:
+    branches:
+      - feature/matick-codex-error-memory-guard-20261111
+    paths:
+      - 'matick_codex_guard/**'
+      - '.github/workflows/matick-codex-guard.yml'
+  pull_request:
+    paths:
+      - 'matick_codex_guard/**'
+      - '.github/workflows/matick-codex-guard.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test core guard
+        run: python -m unittest discover -s matick_codex_guard/tests -v
