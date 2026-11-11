@@ -2,13 +2,13 @@
 
 El módulo es **experimental**, no reemplaza Matick Studio LM ni controla el sistema de Windows.
 
-Requiere Python >=3.10 (sin dependencias externas). Crear/usar un proyecto propio con carpeta `tests` y archivos `test*.py`. Este comando **ejecuta código de esas pruebas**, por lo que solo debe usarse en repositorios confiables y, antes de automatizar, con sandbox de bajo privilegio.
+Requiere Python >=3.10 (sin dependencias externas). **CI:** compatibilidad probada en Python 3.11 y Python 3.15, en Linux y Windows, con matriz automática de GitHub Actions. La rama 3.15 instala la última versión de mantenimiento disponible (3.15.2 a 2026-11-11). Las pruebas reales en la PC de Morlet siguen pendientes. Crear/usar un proyecto propio con carpeta `tests` y archivos `test*.py`. Este comando **ejecuta código de esas pruebas**, por lo que solo debe usarse en repositorios confiables y, antes de automatizar, con sandbox de bajo privilegio.
 
 ```powershell
-python -m matick_codex_guard.guard failure --workspace "C:\ruta\a\mi-proyecto" --issue "build-01" --error "falló compilación"
-python -m matick_codex_guard.guard status --workspace "C:\ruta\a\mi-proyecto" --issue "build-01"
-python -m matick_codex_guard.guard verify --workspace "C:\ruta\a\mi-proyecto" --issue "build-01" --tests-dir tests
-python -m unittest discover -s matick_codex_guard/tests -v
+py -3.15 -m matick_codex_guard.guard failure --workspace "C:\ruta\a\mi-proyecto" --issue "build-01" --error "falló compilación"
+py -3.15 -m matick_codex_guard.guard status --workspace "C:\ruta\a\mi-proyecto" --issue "build-01"
+py -3.15 -m matick_codex_guard.guard verify --workspace "C:\ruta\a\mi-proyecto" --issue "build-01" --tests-dir tests
+py -3.15 -m unittest discover -s matick_codex_guard/tests -v
 ```
 
 Se debe ejecutar desde la raíz de este repositorio o con este módulo en el `PYTHONPATH`.
