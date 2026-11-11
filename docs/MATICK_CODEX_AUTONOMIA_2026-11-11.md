@@ -50,3 +50,7 @@ En Matick Studio LM, mantener chat de texto funcional. Después, con la RTX 5060
 - [ ] Respetar la negativa a escalar y no incurrir en cargos por cambio automático.
 - [ ] Introducir sandbox/ejecutor de comandos acotado antes de cualquier autonomía real.
 - [ ] Integración en el repositorio correcto solo tras revisión, con pruebas de compilación/LM Studio/Windows y permisos explícitos.
+
+## Supervisor dedicado (NPU)
+
+**Aclaración de Morlet:** NPU, **no CPU** como destino alternativo. El modelo supervisor se identifica siempre con «(NPU)» y no realiza fallback automático a CPU/GPU/cloud. Herramientas, RAG, memoria y modelos del supervisor tienen espacio y configuración separados; véase [Supervisor (NPU) aislado](SUPERVISOR_NPU_AISLADO.md). La ejecución de inferencia en la NPU física sigue sin probarse.
