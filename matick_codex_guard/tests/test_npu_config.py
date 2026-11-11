@@ -22,8 +22,8 @@ class NpuIsolationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "npu"
             config = NPUSupervisorConfig(root)
-            self.assertEqual(config.section("rag"), root / "rag")
-            self.assertEqual(config.section("historial"), root / "historial")
+            self.assertEqual(config.section("rag"), config.root / "rag")
+            self.assertEqual(config.section("historial"), config.root / "historial")
             self.assertFalse(root.exists())
             self.assertFalse(config.as_manifest()["runtime_verified"])
             with self.assertRaises(ValueError):
