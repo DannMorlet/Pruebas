@@ -49,3 +49,7 @@ Implementar una aplicación **Windows nativa y ligera** tomando como referencia 
 6. Reporte honesto de lo que solo puede verificarse desde Windows con LM Studio instalado; nunca afirmar pruebas locales realizadas en Codex Cloud.
 
 > Importante: el repositorio es público. No subir claves, tokens, datos privados, contraseñas, chats reales, capturas personales ni IP de la LAN.
+
+## Nota de alcance para agentes que trabajen en Matick Codex (solo este módulo)
+
+Cuando el usuario pida continuar el **Supervisor (NPU)** o **Matick Codex**, leer **primero** [el briefing maestro de Morlet](docs/BRIEFING_MORLET_PARA_CODEX_Y_CLAUDE_2026-11-11.md) y [la especificación Supervisor (NPU)](docs/SUPERVISOR_NPU_AISLADO.md). El resto de este AGENTS.md describe Gaming y **no autoriza mezclar proyectos**. El briefing es contexto e instrucciones para futuras solicitudes, **no orden de implementar automáticamente**. Escribir «(NPU)» siempre que se trate del supervisor, sin confundirlo con CPU o GPU. No instalar, tocar Windows, fusionar ramas ni gastar créditos al leer estos documentos.
